@@ -985,9 +985,6 @@ byte load(){ //return 1 if loaded ok
   if(b == guinosig || b == guinosigold){
     byte p = 0;
 
-    #if (TANK_IN_EEPROM_CFG == 1)
-    #endif
-
     for(int x=4; p < c; x+= 4){
       unsigned long v = EEPROM.read(x);
       v = (v << 8) + EEPROM.read(x+1);

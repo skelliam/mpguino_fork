@@ -9,6 +9,11 @@
    #define myubbr (16000000/16/9600-1)
 #endif
 
+#if (TANK_IN_EEPROM_CFG == 1)
+   #define eepTankAddr                      0xA0
+   #define numTankParams                       9
+#endif
+
 //do contrast first to get display dialed in
 #define contrastIdx                            0  
 #define vssPulsesPerMileIdx                    1
