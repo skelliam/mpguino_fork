@@ -10,8 +10,8 @@
 #endif
 
 #if (TANK_IN_EEPROM_CFG == 1)
-   #define eepTankAddr                      0xA0
-   #define numTankParams                       9
+   #define eepBlkAddr_Tank                  0xA0
+   #define eepBlkSize_Tank                     9
 #endif
 
 //do contrast first to get display dialed in
@@ -91,6 +91,8 @@ typedef void (* pFunc)(void);//type for display function pointers
 
 class Trip{      
 public:      
+  //enum tripvars {loopCount=0, injPulses, injHiSec, injHius, injIdleHiSec, 
+  //      injIdleHius, vssPulses, vssEOCPulses, vssPulseLength};
   unsigned long loopCount; //how long has this trip been running      
   unsigned long injPulses; //rpm      
   unsigned long injHiSec;// seconds the injector has been open      

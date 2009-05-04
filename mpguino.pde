@@ -276,11 +276,15 @@ byte holdDisplay = 0;
 
 
 #define looptime 1000000ul/loopsPerSecond //1/2 second      
-void loop (void){       
-  if(newRun !=1)
+void loop (void){
+  if(newRun !=1) {
     initGuino();//go through the initialization screen
+  }
   unsigned long lastActivity =microSeconds();
   unsigned long tankHold;      //state at point of last activity
+  #if (TANK_IN_EEPROM_CFG == 1)
+  unsigned long tempTankVars[9];
+  #endif
   while(true){      
     unsigned long loopStart=microSeconds();      
     instant.reset();           //clear instant      
@@ -320,7 +324,19 @@ void loop (void){
     if(instant.vssPulses == 0 && instant.injPulses == 0 && holdDisplay==0){
       if(elapsedMicroseconds(lastActivity) > parms[currentTripResetTimeoutUSIdx] && lastActivity != nil){
         #if (TANK_IN_EEPROM_CFG)
-        /* write tank variables to eeprom */
+        /* copy all of the tank variables into a temp array */
+        /* note this is not elegant and hogs memory */
+        tempTankVars[0] = tank.loopCount;
+        tempTankVars[1] = tank.injPulses;
+        tempTankVars[2] = tank.injHius;
+        tempTankVars[3] = tank.injHiSec;
+        tempTankVars[4] = tank.vssPulses;  
+        tempTankVars[5] = tank.vssPulseLength;
+        tempTankVars[6] = tank.injIdleHiSec;
+        tempTankVars[7] = tank.injIdleHius;
+        tempTankVars[8] = tank.vssEOCPulses;
+        /* and then write them to the eeprom */
+        writeEepBlock32(eepBlkAddr_Tank, &tempTankVars[0], eepBlkSize_Tank);
         #endif
         #if (SLEEP_CFG & Sleep_bkl)
         analogWrite(BrightnessPin,brightness[0]);    //nitey night
@@ -962,15 +978,34 @@ void mul64(unsigned long an[], unsigned long ann[]){
 void save(){
   EEPROM.write(0,guinosig);
   EEPROM.write(1,parmsLength);
-  byte p = 0;
-  for(int x=4; p < parmsLength; x+= 4){
-    unsigned long v = parms[p];
-    EEPROM.write(x,     (v>>24) & 0xFF);
-    EEPROM.write(x + 1, (v>>16) & 0xFF);
-    EEPROM.write(x + 2,  (v>>8) & 0xFF);
-    EEPROM.write(x + 3,     (v) & 0xFF);
+  writeEepBlock32(0x04, &parms[0], parmsLength);
+}
+
+void writeEepBlock32(unsigned int start_addr, unsigned long *val, unsigned int size) {
+  unsigned char p = 0;
+  int i = 0;
+  for(start_addr; p < size; start_addr+=4) {
+    for (i=0; i<4; i++) {
+      byte shift = 8 * (3-i);  // 24, 26, 8, 0
+      EEPROM.write(start_addr + i, (val[p]>>shift) & 0xFF);
+    }
     p++;
   }
+}
+
+void readEepBlock32(unsigned int start_addr, unsigned long *val, unsigned int size) {
+   unsigned long v;
+   unsigned char p = 0;
+   unsigned char temp = 0;
+   unsigned char i = 0;
+   for(start_addr; p < size; start_addr+=4) {
+      for (i=0; i<4; i++) {
+         temp = (i > 0) ? 1 : 0;  // 0, 1, 1, 1
+         v = (v << (temp * 8)) + EEPROM.read(start_addr+i);
+      }
+      val[p]=v;
+      p++;
+    }
 }
 
 byte load(){ //return 1 if loaded ok
@@ -983,21 +1018,11 @@ byte load(){ //return 1 if loaded ok
     c=9; //before fancy parameter counter
 
   if(b == guinosig || b == guinosigold){
-    byte p = 0;
-
-    for(int x=4; p < c; x+= 4){
-      unsigned long v = EEPROM.read(x);
-      v = (v << 8) + EEPROM.read(x+1);
-      v = (v << 8) + EEPROM.read(x+2);
-      v = (v << 8) + EEPROM.read(x+3);
-      parms[p]=v;
-      p++;
-    }
-
+    readEepBlock32(0x04, &parms[0], parmsLength);
     #if (TANK_IN_EEPROM_CFG == 1)
     /* read out the tank variables on boot */
+    readEepBlock32(eepBlkAddr_Tank, &tempTankVars[0], eepBlkSize_Tank);
     #endif
-
     return 1;
   }
   return 0;
