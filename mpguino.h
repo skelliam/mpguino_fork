@@ -9,11 +9,6 @@
    #define myubbr (16000000/16/9600-1)
 #endif
 
-#if (TANK_IN_EEPROM_CFG == 1)
-   #define eepBlkAddr_Tank                  0xA0
-   #define eepBlkSize_Tank                     9
-#endif
-
 //do contrast first to get display dialed in
 #define contrastIdx                            0  
 #define vssPulsesPerMileIdx                    1
@@ -91,10 +86,6 @@ typedef void (* pFunc)(void);//type for display function pointers
 
 class Trip{      
 public:      
-  enum varnames {loopCount=0, injPulses, injHiSec, injHius, injIdleHiSec, 
-                 injIdleHius, vssPulses, vssEOCPulses, vssPulseLength};
-  unsigned long var[9];
-  /* ----
   unsigned long loopCount; //how long has this trip been running      
   unsigned long injPulses; //rpm      
   unsigned long injHiSec;// seconds the injector has been open      
@@ -104,7 +95,6 @@ public:
   unsigned long vssPulses;//from the speedo      
   unsigned long vssEOCPulses;//from the speedo      
   unsigned long vssPulseLength; // only used by instant
-  ---- */
   //these functions actually return in thousandths,       
   unsigned long miles();        
   unsigned long gallons();      
