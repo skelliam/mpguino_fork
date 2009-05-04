@@ -355,9 +355,13 @@ void loop (void){
  if(holdDisplay==0){
     displayFuncs[screen]();    //call the appropriate display routine      
     LCD::gotoXY(0,0);        
-    #if (CFG_FUELCUT_WARNING == 1)
-       /* overwrite top left corner of LCD with a visual 
-          indication that fuel cut is happening */
+
+    #if (CFG_FUELCUT_INDICATOR == 1)
+    /* overwrite top left corner of LCD with a visual indication that fuel cut is happening */
+    if((instant.var[Trip::injPulses] == 0) && (instant.var[Trip::vssPulses] > 0)) {
+       LCD::LcdDataWrite(0x2A);  /* asterisk */
+       LCD::gotoXY(0,0);         /* put cursor back where we found it */
+    }
     #endif
     
 //see if any buttons were pressed, display a brief message if so      
