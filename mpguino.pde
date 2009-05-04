@@ -355,6 +355,10 @@ void loop (void){
  if(holdDisplay==0){
     displayFuncs[screen]();    //call the appropriate display routine      
     LCD::gotoXY(0,0);        
+    #if (CFG_FUELCUT_WARNING == 1)
+       /* overwrite top left corner of LCD with a visual 
+          indication that fuel cut is happening */
+    #endif
     
 //see if any buttons were pressed, display a brief message if so      
       if(!(buttonState&lbuttonBit) && !(buttonState&rbuttonBit)){// left and right = initialize      
