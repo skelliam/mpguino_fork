@@ -141,13 +141,10 @@ void processInjOpen(void){
 void processInjClosed(void){      
   long t =  microSeconds();
   long x = elapsedMicroseconds(injHiStart, t)- parms[injectorSettleTimeIdx];       
-  if(x >0)
-    tmpTrip.injHius += x;       
-  tmpTrip.injPulses++;      
-
+  if(x >0) tmpTrip.var[Trip::injHius] += x;
+  tmpTrip.var[Trip::injPulses]++;      
   if (tmpInstInjStart != nil) {
-    if(x >0)
-      tmpInstInjTot += x;     
+    if(x >0) tmpInstInjTot += x;     
     tmpInstInjCount++;
   } else {
     tmpInstInjStart = t;
@@ -160,7 +157,7 @@ void processInjClosed(void){
 volatile boolean vssFlop = 0;
 
 void enableVSS(){
-//    tmpTrip.vssPulses++; 
+//    tmpTrip.var[Trip::vssPulses]++; 
     vssFlop = !vssFlop;
 }
 
@@ -182,8 +179,8 @@ ISR( PCINT1_vect ){
     unsigned long t = microSeconds();
     lastVSS2=elapsedMicroseconds(lastVSSTime,t);
     lastVSSTime=t;
-    tmpTrip.vssPulses++; 
-    tmpTrip.vssPulseLength += lastVSS2;
+    tmpTrip.var[Trip::vssPulses]++; 
+    tmpTrip.var[Trip::vssPulseLength] += lastVSS2;
     lastVssFlop = vssFlop;
   }
   vsspinstate = p;      
@@ -282,9 +279,7 @@ void loop (void){
   }
   unsigned long lastActivity =microSeconds();
   unsigned long tankHold;      //state at point of last activity
-  #if (TANK_IN_EEPROM_CFG == 1)
-  unsigned long tempTankVars[9];
-  #endif
+
   while(true){      
     unsigned long loopStart=microSeconds();      
     instant.reset();           //clear instant      
@@ -309,11 +304,11 @@ void loop (void){
     simpletx(",");
     simpletx(format(instantmph()));
     simpletx(",");
-    simpletx(format(instant.injHius*1000));
+    simpletx(format(instant.var[Trip::injHius]*1000));
     simpletx(",");
-    simpletx(format(instant.injPulses*1000));
+    simpletx(format(instant.var[Trip::injPulses]*1000));
     simpletx(",");
-    simpletx(format(instant.vssPulses*1000));
+    simpletx(format(instant.var[Trip::vssPulses]*1000));
     simpletx("\n");
 #endif
     
@@ -321,22 +316,10 @@ void loop (void){
     tank.update(instant);      //use instant to update tank      
 
 //currentTripResetTimeoutUS
-    if(instant.vssPulses == 0 && instant.injPulses == 0 && holdDisplay==0){
+    if(instant.var[Trip::vssPulses] == 0 && instant.var[Trip::injPulses] == 0 && holdDisplay==0){
       if(elapsedMicroseconds(lastActivity) > parms[currentTripResetTimeoutUSIdx] && lastActivity != nil){
         #if (TANK_IN_EEPROM_CFG)
-        /* copy all of the tank variables into a temp array */
-        /* note this is not elegant and hogs memory */
-        tempTankVars[0] = tank.loopCount;
-        tempTankVars[1] = tank.injPulses;
-        tempTankVars[2] = tank.injHius;
-        tempTankVars[3] = tank.injHiSec;
-        tempTankVars[4] = tank.vssPulses;  
-        tempTankVars[5] = tank.vssPulseLength;
-        tempTankVars[6] = tank.injIdleHiSec;
-        tempTankVars[7] = tank.injIdleHius;
-        tempTankVars[8] = tank.vssEOCPulses;
-        /* and then write them to the eeprom */
-        writeEepBlock32(eepBlkAddr_Tank, &tempTankVars[0], eepBlkSize_Tank);
+        writeEepBlock32(eepBlkAddr_Tank, &tank.var[0], eepBlkSize_Tank);
         #endif
         #if (SLEEP_CFG & Sleep_bkl)
         analogWrite(BrightnessPin,brightness[0]);    //nitey night
@@ -359,12 +342,12 @@ void loop (void){
         #endif
         lastActivity=loopStart;
         current.reset();
-        tank.loopCount = tankHold;
+        tank.var[Trip::loopCount] = tankHold;
         current.update(instant); 
         tank.update(instant); 
       }else{
         lastActivity=loopStart;
-        tankHold = tank.loopCount;
+        tankHold = tank.var[Trip::loopCount];
       }
     }
     
@@ -455,7 +438,7 @@ char * getStr(prog_char * str){
 
  
 void doDisplayCustom(){displayTripCombo('M','G',instantmpg(),'S',instantmph(),'G','H',instantgph(),'C',current.mpg());}      
-//void doDisplayCustom(){displayTripCombo('I','M',instantmpg(),'S',instantgph(),'R','P',instantrpm(),'C',current.injIdleHiSec*1000);}      
+//void doDisplayCustom(){displayTripCombo('I','M',instantmpg(),'S',instantgph(),'R','P',instantrpm(),'C',current.var[Trip::injIdleHiSec]*1000);}      
 //void doDisplayCustom(){displayTripCombo('I','M',995,'S',994,'R','P',999994,'C',999995);}      
 void doDisplayEOCIdleData(){displayTripCombo('C','E',current.eocMiles(),'G',current.idleGallons(),'T','E',tank.eocMiles(),'G',tank.idleGallons());}      
 void doDisplayInstantCurrent(){displayTripCombo('I','M',instantmpg(),'S',instantmph(),'C','M',current.mpg(),'D',current.miles());}      
@@ -649,7 +632,7 @@ unsigned long tmp3[2];
 
 unsigned long instantmph(){      
   //unsigned long vssPulseTimeuS = (lastVSS1 + lastVSS2) / 2;
-  unsigned long vssPulseTimeuS = instant.vssPulseLength/instant.vssPulses;
+  unsigned long vssPulseTimeuS = instant.var[Trip::vssPulseLength]/instant.var[Trip::vssPulses];
   
   init64(tmp1,0,1000000000ul);
   init64(tmp2,0,parms[vssPulsesPerMileIdx]);
@@ -676,7 +659,7 @@ unsigned long instantmpg(){
 
 
 unsigned long instantgph(){      
-//  unsigned long vssPulseTimeuS = instant.vssPulseLength/instant.vssPulses;
+//  unsigned long vssPulseTimeuS = instant.var[Trip::vssPulseLength]/instant.var[Trip::vssPulses];
   
 //  unsigned long instInjStart=nil; 
 //unsigned long instInjEnd; 
@@ -699,7 +682,7 @@ unsigned long instantrpm(){
   mul64(tmp1,tmp2);
   init64(tmp2,0,1000ul);
   mul64(tmp1,tmp2);
-  init64(tmp2,0,parms[injPulsesPer2Revolutions]);
+  init64(tmp2,0,parms[var[Trip::injPulses]Per2Revolutions]);
   div64(tmp1,tmp2);
   init64(tmp2,0,instInjEnd-instInjStart);
   div64(tmp1,tmp2);
@@ -707,7 +690,7 @@ unsigned long instantrpm(){
 } */
 
 unsigned long Trip::miles(){      
-  init64(tmp1,0,vssPulses);
+  init64(tmp1,0,var[Trip::vssPulses]);
   init64(tmp2,0,1000);
   mul64(tmp1,tmp2);
   init64(tmp2,0,parms[vssPulsesPerMileIdx]);
@@ -716,7 +699,7 @@ unsigned long Trip::miles(){
 }      
  
 unsigned long Trip::eocMiles(){      
-  init64(tmp1,0,vssEOCPulses);
+  init64(tmp1,0,var[Trip::vssEOCPulses]);
   init64(tmp2,0,1000);
   mul64(tmp1,tmp2);
   init64(tmp2,0,parms[vssPulsesPerMileIdx]);
@@ -725,25 +708,25 @@ unsigned long Trip::eocMiles(){
 }       
  
 unsigned long Trip::mph(){      
-  if(loopCount == 0)     
+  if(var[Trip::loopCount] == 0)     
      return 0;     
   init64(tmp1,0,loopsPerSecond);
-  init64(tmp2,0,vssPulses);
+  init64(tmp2,0,var[Trip::vssPulses]);
   mul64(tmp1,tmp2);
   init64(tmp2,0,3600000);
   mul64(tmp1,tmp2);
   init64(tmp2,0,parms[vssPulsesPerMileIdx]);
   div64(tmp1,tmp2);
-  init64(tmp2,0,loopCount);
+  init64(tmp2,0,var[Trip::loopCount]);
   div64(tmp1,tmp2);
   return tmp1[1];      
 }      
  
 unsigned long  Trip::gallons(){      
-  init64(tmp1,0,injHiSec);
+  init64(tmp1,0,var[Trip::injHiSec]);
   init64(tmp2,0,1000000);
   mul64(tmp1,tmp2);
-  init64(tmp2,0,injHius);
+  init64(tmp2,0,var[Trip::injHius]);
   add64(tmp1,tmp2);
   init64(tmp2,0,1000);
   mul64(tmp1,tmp2);
@@ -753,10 +736,10 @@ unsigned long  Trip::gallons(){
 }      
 
 unsigned long  Trip::idleGallons(){      
-  init64(tmp1,0,injIdleHiSec);
+  init64(tmp1,0,var[Trip::injIdleHiSec]);
   init64(tmp2,0,1000000);
   mul64(tmp1,tmp2);
-  init64(tmp2,0,injIdleHius);
+  init64(tmp2,0,var[Trip::injIdleHius]);
   add64(tmp1,tmp2);
   init64(tmp2,0,1000);
   mul64(tmp1,tmp2);
@@ -769,13 +752,13 @@ unsigned long  Trip::idleGallons(){
 //idleGallons
  
 unsigned long  Trip::mpg(){      
-  if(vssPulses==0) return 0;      
-  if(injPulses==0) return 999999000; //who doesn't like to see 999999?  :)      
+  if(var[Trip::vssPulses]==0) return 0;      
+  if(var[Trip::injPulses]==0) return 999999000; //who doesn't like to see 999999?  :)      
  
-  init64(tmp1,0,injHiSec);
+  init64(tmp1,0,var[Trip::injHiSec]);
   init64(tmp3,0,1000000);
   mul64(tmp3,tmp1);
-  init64(tmp1,0,injHius);
+  init64(tmp1,0,var[Trip::injHius]);
   add64(tmp3,tmp1);
   init64(tmp1,0,parms[vssPulsesPerMileIdx]);
   mul64(tmp3,tmp1);
@@ -783,7 +766,7 @@ unsigned long  Trip::mpg(){
   init64(tmp1,0,parms[microSecondsPerGallonIdx]);
   init64(tmp2,0,1000);
   mul64(tmp1,tmp2);
-  init64(tmp2,0,vssPulses);
+  init64(tmp2,0,var[Trip::vssPulses]);
   mul64(tmp1,tmp2);
  
   div64(tmp1,tmp3);
@@ -794,44 +777,44 @@ unsigned long  Trip::mpg(){
 unsigned long Trip::time(){      
 //  return seconds*1000;      
   byte d = 60;      
-  unsigned long seconds = loopCount/loopsPerSecond;     
+  unsigned long seconds = var[Trip::loopCount]/loopsPerSecond;     
 //  if(seconds/60 > 999) d = 3600; //scale up to hours.minutes if we get past 999 minutes      
   return ((seconds/d)*1000) + ((seconds%d) * 10);       
 }      
  
  
 void Trip::reset(){      
-  loopCount=0;      
-  injPulses=0;      
-  injHius=0;      
-  injHiSec=0;      
-  vssPulses=0;  
-  vssPulseLength=0;
-  injIdleHiSec=0;
-  injIdleHius=0;
-  vssEOCPulses=0;
+  var[Trip::loopCount]=0;      
+  var[Trip::injPulses]=0;      
+  var[Trip::injHius]=0;      
+  var[Trip::injHiSec]=0;      
+  var[Trip::vssPulses]=0;  
+  var[Trip::vssPulseLength]=0;
+  var[Trip::injIdleHiSec]=0;
+  var[Trip::injIdleHius]=0;
+  var[Trip::vssEOCPulses]=0;
 }      
  
 void Trip::update(Trip t){     
-  loopCount++;  //we call update once per loop     
-  vssPulses+=t.vssPulses;      
-  vssPulseLength+=t.vssPulseLength;
-  if(t.injPulses ==0 )  //track distance traveled with engine off
-    vssEOCPulses+=t.vssPulses;
+  var[Trip::loopCount]++;  //we call update once per loop     
+  var[Trip::vssPulses]+=t.var[Trip::vssPulses];      
+  var[Trip::vssPulseLength]+=t.var[Trip::vssPulseLength];
+  if(t.var[Trip::injPulses] ==0 )  //track distance traveled with engine off
+    var[Trip::vssEOCPulses]+=t.var[Trip::vssPulses];
   
-  if(t.injPulses > 2 && t.injHius<500000){//chasing ghosts      
-    injPulses+=t.injPulses;      
-    injHius+=t.injHius;      
-    if (injHius>=1000000){  //rollover into the injHiSec counter      
-      injHiSec++;      
-      injHius-=1000000;      
+  if(t.var[Trip::injPulses] > 2 && t.var[Trip::injHius]<500000){//chasing ghosts      
+    var[Trip::injPulses]+=t.var[Trip::injPulses];      
+    var[Trip::injHius]+=t.var[Trip::injHius];      
+    if (var[Trip::injHius]>=1000000){  //rollover into the var[Trip::injHiSec] counter      
+      var[Trip::injHiSec]++;      
+      var[Trip::injHius]-=1000000;      
     }
-    if(t.vssPulses == 0){    //track gallons spent sitting still
+    if(t.var[Trip::vssPulses] == 0){    //track gallons spent sitting still
       
-      injIdleHius+=t.injHius;      
-      if (injIdleHius>=1000000){  //r
-        injIdleHiSec++;
-        injIdleHius-=1000000;      
+      var[Trip::injIdleHius]+=t.var[Trip::injHius];      
+      if (var[Trip::injIdleHius]>=1000000){  //r
+        var[Trip::injIdleHiSec]++;
+        var[Trip::injIdleHius]-=1000000;      
       }      
     }
   }      
@@ -1005,7 +988,7 @@ void readEepBlock32(unsigned int start_addr, unsigned long *val, unsigned int si
       }
       val[p]=v;
       p++;
-    }
+   }
 }
 
 byte load(){ //return 1 if loaded ok
@@ -1021,13 +1004,13 @@ byte load(){ //return 1 if loaded ok
     readEepBlock32(0x04, &parms[0], parmsLength);
     #if (TANK_IN_EEPROM_CFG == 1)
     /* read out the tank variables on boot */
-    readEepBlock32(eepBlkAddr_Tank, &tempTankVars[0], eepBlkSize_Tank);
+    /* TODO:  eepBlkSize_Tank is appropriate for size? */
+    readEepBlock32(eepBlkAddr_Tank, &tank.var[0], eepBlkSize_Tank);  
     #endif
     return 1;
   }
   return 0;
 }
-
 
 char * uformat(unsigned long val){ 
   unsigned long d = 1000000000ul;

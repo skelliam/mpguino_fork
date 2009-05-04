@@ -91,8 +91,10 @@ typedef void (* pFunc)(void);//type for display function pointers
 
 class Trip{      
 public:      
-  //enum tripvars {loopCount=0, injPulses, injHiSec, injHius, injIdleHiSec, 
-  //      injIdleHius, vssPulses, vssEOCPulses, vssPulseLength};
+  enum varnames {loopCount=0, injPulses, injHiSec, injHius, injIdleHiSec, 
+                 injIdleHius, vssPulses, vssEOCPulses, vssPulseLength};
+  unsigned long var[9];
+  /* ----
   unsigned long loopCount; //how long has this trip been running      
   unsigned long injPulses; //rpm      
   unsigned long injHiSec;// seconds the injector has been open      
@@ -102,6 +104,7 @@ public:
   unsigned long vssPulses;//from the speedo      
   unsigned long vssEOCPulses;//from the speedo      
   unsigned long vssPulseLength; // only used by instant
+  ---- */
   //these functions actually return in thousandths,       
   unsigned long miles();        
   unsigned long gallons();      
