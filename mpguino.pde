@@ -969,7 +969,7 @@ void writeEepBlock32(unsigned int start_addr, unsigned long *val, unsigned int s
   int i = 0;
   for(start_addr; p < size; start_addr+=4) {
     for (i=0; i<4; i++) {
-      byte shift = 8 * (3-i);  // 24, 26, 8, 0
+      byte shift = (8 * (3-i));  /* 24, 26, 8, 0 */
       EEPROM.write(start_addr + i, (val[p]>>shift) & 0xFF);
     }
     p++;
@@ -977,16 +977,17 @@ void writeEepBlock32(unsigned int start_addr, unsigned long *val, unsigned int s
 }
 
 void readEepBlock32(unsigned int start_addr, unsigned long *val, unsigned int size) {
-   unsigned long v;
+   unsigned long v = 0;
    unsigned char p = 0;
    unsigned char temp = 0;
    unsigned char i = 0;
    for(start_addr; p < size; start_addr+=4) {
+      v = 0;   /* clear the scratch variable every loop! */
       for (i=0; i<4; i++) {
-         temp = (i > 0) ? 1 : 0;  // 0, 1, 1, 1
-         v = (v << (temp * 8)) + EEPROM.read(start_addr+i);
+         temp = (i > 0) ? 1 : 0;  /* 0, 1, 1, 1  */
+         v = (v << (temp * 8)) + EEPROM.read(start_addr + i);
       }
-      val[p]=v;
+      val[p] = v;
       p++;
    }
 }
