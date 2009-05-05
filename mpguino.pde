@@ -318,28 +318,28 @@ void loop (void){
 //currentTripResetTimeoutUS
     if(instant.var[Trip::vssPulses] == 0 && instant.var[Trip::injPulses] == 0 && holdDisplay==0){
       if(elapsedMicroseconds(lastActivity) > parms[currentTripResetTimeoutUSIdx] && lastActivity != nil){
-        #if (TANK_IN_EEPROM_CFG)
+#if (TANK_IN_EEPROM_CFG)
         writeEepBlock32(eepBlkAddr_Tank, &tank.var[0], eepBlkSize_Tank);
-        #endif
-        #if (SLEEP_CFG & Sleep_bkl)
+#endif
+#if (SLEEP_CFG & Sleep_bkl)
         analogWrite(BrightnessPin,brightness[0]);    //nitey night
-        #endif
-        #if (SLEEP_CFG & Sleep_lcd)
+#endif
+#if (SLEEP_CFG & Sleep_lcd)
         LCD::LcdCommandWrite(LCD_DisplayOnOffCtrl);  //LCD off unless explicitly told ON
-        #endif
+#endif
         lastActivity = nil;
       }
     }else{
       if(lastActivity == nil){//wake up!!!
-        #if (SLEEP_CFG & Sleep_bkl)
+#if (SLEEP_CFG & Sleep_bkl)
         analogWrite(BrightnessPin,brightness[brightnessIdx]);    
-        #endif
-        #if (SLEEP_CFG & Sleep_lcd)
+#endif
+#if (SLEEP_CFG & Sleep_lcd)
         // Turn on the LCD again.  Display should be restored.
         LCD::LcdCommandWrite(LCD_DisplayOnOffCtrl | LCD_DisplayOnOffCtrl_DispOn);
         // TODO:  Does the above cause a problem if sleep happens during a settings mode? 
         //        Said another way, we don't get the cursor back unless we ask for it.
-        #endif
+#endif
         lastActivity=loopStart;
         current.reset();
         tank.var[Trip::loopCount] = tankHold;
@@ -356,13 +356,13 @@ void loop (void){
     displayFuncs[screen]();    //call the appropriate display routine      
     LCD::gotoXY(0,0);        
 
-    #if (CFG_FUELCUT_INDICATOR == 1)
+#if (CFG_FUELCUT_INDICATOR == 1)
     /* overwrite top left corner of LCD with a visual indication that fuel cut is happening */
     if((instant.var[Trip::injPulses] == 0) && (instant.var[Trip::vssPulses] > 0)) {
        LCD::LcdDataWrite(0x2A);  /* asterisk */
        LCD::gotoXY(0,0);         /* put cursor back where we found it */
     }
-    #endif
+#endif
     
 //see if any buttons were pressed, display a brief message if so      
       if(!(buttonState&lbuttonBit) && !(buttonState&rbuttonBit)){// left and right = initialize      
@@ -407,9 +407,10 @@ void loop (void){
 }       
  
  
-char fBuff[7];//used by format    
+
 
 char* format(unsigned long num){
+  char fBuff[7];//used by format    
   byte dp = 3;
 
   while(num > 999999){
@@ -438,8 +439,8 @@ char* format(unsigned long num){
 }
  
 //get a string from flash 
-char mBuff[17];//used by getStr 
 char * getStr(prog_char * str){ 
+  char mBuff[17];//used by getStr 
   strcpy_P(mBuff, str); 
   return mBuff; 
 } 
@@ -460,30 +461,64 @@ void doDisplayBigTank()    {bigNum(tank.mpg(),"TANK","MPG ");}
 void doDisplayCurrentTripData(void){tDisplay(&current);}   //display current trip formatted data.        
 void doDisplayTankTripData(void){tDisplay(&tank);}      //display tank trip formatted data.        
 void doDisplaySystemInfo(void){      
-  LCD::gotoXY(0,0);LCD::print("C%");LCD::print(format(maxLoopLength*1000/(looptime/100)));LCD::print(" T"); LCD::print(format(tank.time()));     
-  unsigned long mem = memoryTest();      
-  mem*=1000;      
-  LCD::gotoXY(0,1);
-  LCD::print("FREE MEM: ");
-  LCD::print(format(mem));      
+   LCD::gotoXY(0,0);
+   LCD::print("C%");
+   LCD::print(format(maxLoopLength*1000/(looptime/100)));
+   LCD::print(" T"); 
+   LCD::print(format(tank.time()));
+   
+   unsigned long mem = memoryTest();      
+   mem*=1000;      
+   LCD::gotoXY(0,1);
+   LCD::print("FREE MEM: ");
+   LCD::print(format(mem));      
 }    //display max cpu utilization and ram.        
  
-void displayTripCombo(char t1, char t1L1, unsigned long t1V1, char t1L2, unsigned long t1V2,  char t2, char t2L1, unsigned long t2V1, char t2L2, unsigned long t2V2){ 
-  LCD::gotoXY(0,0);LCD::LcdDataWrite(t1);LCD::LcdDataWrite(t1L1);LCD::print(format(t1V1));LCD::LcdDataWrite(' '); 
-      LCD::LcdDataWrite(t1L2);LCD::print(format(t1V2)); 
-  LCD::gotoXY(0,1);LCD::LcdDataWrite(t2);LCD::LcdDataWrite(t2L1);LCD::print(format(t2V1));LCD::LcdDataWrite(' '); 
-      LCD::LcdDataWrite(t2L2);LCD::print(format(t2V2)); 
+void displayTripCombo(char t1, char t1L1, unsigned long t1V1, char t1L2, unsigned long t1V2, 
+                      char t2, char t2L1, unsigned long t2V1, char t2L2, unsigned long t2V2) {
+   char buf[17] = "";
+   LCD::gotoXY(0,0);
+   buf[0] = t1;
+   buf[1] = t2;
+   buf[2] = 
+   strcat(buf, t1);
+   strcat(buf, t1L1);
+   strcat(buf, t1V1);
+   strcat(buf, t1L2);
+   strcat(buf, t1V2);
+/* -----------
+   LCD::LcdDataWrite(t1);
+   LCD::LcdDataWrite(t1L1);
+   LCD::print(format(t1V1));
+   LCD::LcdDataWrite(' '); 
+   LCD::LcdDataWrite(t1L2);
+   LCD::print(format(t1V2));
+-------------- */
+   
+   LCD::gotoXY(0,1);
+   LCD::LcdDataWrite(t2);
+   LCD::LcdDataWrite(t2L1);
+   LCD::print(format(t2V1));
+   LCD::LcdDataWrite(' '); 
+   LCD::LcdDataWrite(t2L2);
+   LCD::print(format(t2V2)); 
 }      
  
 //arduino doesn't do well with types defined in a script as parameters, so have to pass as void * and use -> notation.      
 void tDisplay( void * r){ //display trip functions.        
-  Trip *t = (Trip *)r;      
-  LCD::gotoXY(0,0);LCD::print("MH");LCD::print(format(t->mph()));LCD::print("MG");LCD::print(format(t->mpg()));      
-  LCD::gotoXY(0,1);LCD::print("MI");LCD::print(format(t->miles()));LCD::print("GA");LCD::print(format(t->gallons()));      
+   Trip *t = (Trip *)r;      
+   LCD::gotoXY(0,0);
+   LCD::print("MH");
+   LCD::print(format(t->mph()));
+   LCD::print("MG");
+   LCD::print(format(t->mpg()));      
+   
+   LCD::gotoXY(0,1);
+   LCD::print("MI");
+   LCD::print(format(t->miles()));
+   LCD::print("GA");
+   LCD::print(format(t->gallons()));      
 }      
- 
- 
- 
     
 //x=0..16, y= 0..1      
 void LCD::gotoXY(byte x, byte y){      
@@ -1023,6 +1058,7 @@ byte load(){ //return 1 if loaded ok
 }
 
 char * uformat(unsigned long val){ 
+  char mBuff[17];  //used by getStr 
   unsigned long d = 1000000000ul;
   for(byte p = 0; p < 10 ; p++){
     mBuff[p]='0' + (val/d);
