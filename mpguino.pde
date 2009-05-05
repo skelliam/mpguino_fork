@@ -407,8 +407,6 @@ void loop (void){
 }       
  
  
-
-
 char* format(unsigned long num){
   char fBuff[7];//used by format    
   byte dp = 3;
@@ -476,32 +474,27 @@ void doDisplaySystemInfo(void){
  
 void displayTripCombo(char t1, char t1L1, unsigned long t1V1, char t1L2, unsigned long t1V2, 
                       char t2, char t2L1, unsigned long t2V1, char t2L2, unsigned long t2V2) {
-   char buf[17] = "";
-   LCD::gotoXY(0,0);
+   char buf[17];
+
    buf[0] = t1;
-   buf[1] = t2;
-   buf[2] = 
-   strcat(buf, t1);
-   strcat(buf, t1L1);
-   strcat(buf, t1V1);
-   strcat(buf, t1L2);
-   strcat(buf, t1V2);
-/* -----------
-   LCD::LcdDataWrite(t1);
-   LCD::LcdDataWrite(t1L1);
-   LCD::print(format(t1V1));
-   LCD::LcdDataWrite(' '); 
-   LCD::LcdDataWrite(t1L2);
-   LCD::print(format(t1V2));
--------------- */
-   
+   buf[1] = t1L1;
+   strcpyinto(buf[2], format(t1V1), 6);
+   buf[8] = ' ';
+   buf[9] = t1L2;
+   strcpyinto(buf[10], format(t1V2), 6);
+   buf[16] = 0;
+   LCD::gotoXY(0,0);
+   LCD::print(buf);
+
+   buf[0] = t2;
+   buf[1] = t2L1;
+   strcpyinto(buf[2], format(t2V1), 6);
+   buf[8] = ' ';
+   buf[9] = t2L2;
+   strcpyinto(buf[10], format(t2V2), 6);
+   buf[16] = 0;
    LCD::gotoXY(0,1);
-   LCD::LcdDataWrite(t2);
-   LCD::LcdDataWrite(t2L1);
-   LCD::print(format(t2V1));
-   LCD::LcdDataWrite(' '); 
-   LCD::LcdDataWrite(t2L2);
-   LCD::print(format(t2V2)); 
+   LCD::print(buf);
 }      
  
 //arduino doesn't do well with types defined in a script as parameters, so have to pass as void * and use -> notation.      
@@ -1033,6 +1026,13 @@ void readEepBlock32(unsigned int start_addr, unsigned long *val, unsigned int si
       }
       val[p] = v;
       p++;
+   }
+}
+
+void strcpyinto(char *buf, char *val, unsigned char len) {
+   unsigned char i = 0;
+   for (i=0; i<len; i++) {
+      buf[i]=val[i];
    }
 }
 
