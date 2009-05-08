@@ -113,16 +113,16 @@ unsigned long elapsedMicroseconds(unsigned long startMicroSeconds ){
   return elapsedMicroseconds(startMicroSeconds, microSeconds());
 }      
  
-
- 
  
 //main objects we will be working with:      
 unsigned long injHiStart; //for timing injector pulses      
 Trip tmpTrip;      
 Trip instant;      
 Trip current;      
-Trip tank;      
-
+Trip tank;
+#if (BARGRAPH_DISPLAY_CFG == 1);
+Trip fivemin;
+#endif
 
 unsigned volatile long instInjStart=nil; 
 unsigned volatile long tmpInstInjStart=nil; 
@@ -313,7 +313,10 @@ void loop (void){
 #endif
     
     current.update(instant);   //use instant to update current      
-    tank.update(instant);      //use instant to update tank      
+    tank.update(instant);      //use instant to update tank
+#if (BARGRAPH_DISPLAY_CFG == 1)
+    fivemin.update(instant);   
+#endif
 
 //currentTripResetTimeoutUS
     if(instant.var[Trip::vssPulses] == 0 && instant.var[Trip::injPulses] == 0 && holdDisplay==0){
@@ -345,6 +348,10 @@ void loop (void){
         tank.var[Trip::loopCount] = tankHold;
         current.update(instant); 
         tank.update(instant); 
+#if (BARGRAPH_DISPLAY_CFG == 1)
+        fivemin.reset();
+        fivemin.update(instant);
+#endif
       }else{
         lastActivity=loopStart;
         tankHold = tank.var[Trip::loopCount];
