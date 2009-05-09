@@ -12,6 +12,10 @@ unsigned long  parms[]={95ul,8208ul,500000000ul,3ul,420000000ul,10300ul,500ul,24
 char *parmLabels[]={"Contrast","VSS Pulses/Mile", "MicroSec/Gallon","Pulses/2 revs","Timout(microSec)","Tank Gal * 1000","Injector DelayuS","Weight (lbs)","Scratchpad(odo?)","VSS Delay ms"};
 const unsigned char LcdCharHeightPix = 8;
 unsigned long maxLoopLength = 0;            // see if we are overutilizing the CPU      
+   #define bufsize    17
+static char buf1[bufsize];
+static char buf2[bufsize];
+
 
 #if (CFG_BIGFONT_TYPE == 1)
    //32 = 0x20 = space
@@ -483,8 +487,6 @@ void doDisplaySystemInfo(void){
 void displayTripCombo(char t1, char t1L1, unsigned long t1V1, char t1L2, unsigned long t1V2, 
                       char t2, char t2L1, unsigned long t2V1, char t2L2, unsigned long t2V2) {
 
-   #define bufsize    17
-   static char buf[bufsize];
 
 #if (0)
    /* TODO:  Remove? */
@@ -501,42 +503,47 @@ void displayTripCombo(char t1, char t1L1, unsigned long t1V1, char t1L2, unsigne
 #endif
 
    /* Process line 1 of the display */
-   buf[0] = t1;
-   buf[1] = t1L1;
-   strcpyinto(&buf[2], format(t1V1), 6);
-   buf[8] = ' ';
-   buf[9] = t1L2;
-   strcpyinto(&buf[10], format(t1V2), 6);
-   buf[16] = 0;  /* null terminated */
+   buf1[0] = t1;
+   buf1[1] = t1L1;
+   strcpyinto(&buf1[2], format(t1V1), 6);
+   buf1[8] = ' ';
+   buf1[9] = t1L2;
+   strcpyinto(&buf1[10], format(t1V2), 6);
+   buf1[16] = 0;  /* null terminated */
    LCD::gotoXY(0,0);
-   LCD::print(buf);
+   LCD::print(buf1);
 
    /* Process line 2 of the display */
-   buf[0] = t2;
-   buf[1] = t2L1;
-   strcpyinto(&buf[2], format(t2V1), 6);
-   buf[8] = ' ';
-   buf[9] = t2L2;
-   strcpyinto(&buf[10], format(t2V2), 6);
-   buf[16] = 0;  /* null terminated */
+   buf2[0] = t2;
+   buf2[1] = t2L1;
+   strcpyinto(&buf2[2], format(t2V1), 6);
+   buf2[8] = ' ';
+   buf2[9] = t2L2;
+   strcpyinto(&buf2[10], format(t2V2), 6);
+   buf2[16] = 0;  /* null terminated */
    LCD::gotoXY(0,1);
-   LCD::print(buf);
+   LCD::print(buf2);
 }      
  
 //arduino doesn't do well with types defined in a script as parameters, so have to pass as void * and use -> notation.      
 void tDisplay( void * r){ //display trip functions.        
    Trip *t = (Trip *)r;      
-   LCD::gotoXY(0,0);
-   LCD::print("MH");
-   LCD::print(format(t->mph()));
-   LCD::print("MG");
-   LCD::print(format(t->mpg()));      
-   
+
+   strcpyinto(&buf1[0], "MH", 2);
+   strcpyinto(&buf1[2], format(t->mph()), 6);
+   strcpyinto(&buf1[8], "MG", 2);
+   strcpyinto(&buf1[10], format(t->mpg()), 6);
+   buf1[16] = 0;
+   LCD::gotoXY(0,0);  
+   LCD::print(buf1);
+
+   strcpyinto(&buf2[0], "MI", 2);
+   strcpyinto(&buf2[2], format(t->miles()), 6);
+   strcpyinto(&buf2[8], "GA", 2);
+   strcpyinto(&buf2[10], format(t->gallons()), 6);
+   buf2[16] = 0;
    LCD::gotoXY(0,1);
-   LCD::print("MI");
-   LCD::print(format(t->miles()));
-   LCD::print("GA");
-   LCD::print(format(t->gallons()));      
+   LCD::print(buf2);
 }      
     
 //x=0..16, y= 0..1      
