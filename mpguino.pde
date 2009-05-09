@@ -485,12 +485,20 @@ void displayTripCombo(char t1, char t1L1, unsigned long t1V1, char t1L2, unsigne
 
    #define bufsize    17
    static char buf[bufsize];
+
+#if (0)
+   /* TODO:  Remove? */
+   /* this stuff is probably not needed as long
+    * as we are sure that we don't have any nulls
+    * in the final array.  This little loop adds
+    * like 30 bytes to the executable! */
    int i;
 
    /* set buffer initially to all spaces */
    for (i=0; i<bufsize; i++) {
       buf[i] = ' ';
    }
+#endif
 
    /* Process line 1 of the display */
    buf[0] = t1;
@@ -499,7 +507,7 @@ void displayTripCombo(char t1, char t1L1, unsigned long t1V1, char t1L2, unsigne
    buf[8] = ' ';
    buf[9] = t1L2;
    strcpyinto(&buf[10], format(t1V2), 6);
-   buf[16] = 0;
+   buf[16] = 0;  /* null terminated */
    LCD::gotoXY(0,0);
    LCD::print(buf);
 
@@ -510,7 +518,7 @@ void displayTripCombo(char t1, char t1L1, unsigned long t1V1, char t1L2, unsigne
    buf[8] = ' ';
    buf[9] = t2L2;
    strcpyinto(&buf[10], format(t2V2), 6);
-   buf[16] = 0;
+   buf[16] = 0;  /* null terminated */
    LCD::gotoXY(0,1);
    LCD::print(buf);
 }      
