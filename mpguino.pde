@@ -407,38 +407,46 @@ void loop (void){
 }       
  
  
-char* format(unsigned long num){
-  char fBuff[7];//used by format    
-  byte dp = 3;
+char *format(unsigned long num) {
+   static char fBuff[7];   
+   unsigned char dp = 3;
+   unsigned char x = 6;
 
-  while(num > 999999){
-    num /= 10;
-    dp++;
-    if( dp == 5 ) break; // We'll lose the top numbers like an odometer
-  }
-  if(dp == 5) dp = 99; // We don't need a decimal point here.
-
-// Round off the non-printed value.
-  if((num % 10) > 4)
-    num += 10;
-  num /= 10;
-  byte x = 6;
-  while(x > 0){
-    x--;
-    if(x==dp){ //time to poke in the decimal point?{
-      fBuff[x]='.';
-    }else{
-      fBuff[x]= '0' + (num % 10);//poke the ascii character for the digit.
+   while(num > 999999) {
       num /= 10;
-    } 
-  }
-  fBuff[6] = 0;
-  return fBuff;
+      dp++;
+      if( dp == 5 ) break; /* We'll lose the top numbers like an odometer */
+   }
+   if(dp == 5) dp = 99; /* We don't need a decimal point here. */
+
+   /* Round off the non-printed value. */
+   if((num % 10) > 4) {
+      num += 10;
+   }
+
+   num /= 10;
+
+
+   while(x > 0){
+      x--;
+      if(x==dp) {
+         /* time to poke in the decimal point? */
+         fBuff[x]='.';
+      }
+      else {
+         /* poke the ascii character for the digit. */
+         fBuff[x]= '0' + (num % 10);
+         num /= 10;
+      }
+   }
+
+   fBuff[6] = 0;
+   return fBuff;
 }
  
 //get a string from flash 
 char * getStr(prog_char * str){ 
-  char mBuff[17];//used by getStr 
+  static char mBuff[17];//used by getStr 
   strcpy_P(mBuff, str); 
   return mBuff; 
 } 
@@ -474,24 +482,34 @@ void doDisplaySystemInfo(void){
  
 void displayTripCombo(char t1, char t1L1, unsigned long t1V1, char t1L2, unsigned long t1V2, 
                       char t2, char t2L1, unsigned long t2V1, char t2L2, unsigned long t2V2) {
-   char buf[17];
 
+   #define bufsize    17
+   static char buf[bufsize];
+   int i;
+
+   /* set buffer initially to all spaces */
+   for (i=0; i<bufsize; i++) {
+      buf[i] = ' ';
+   }
+
+   /* Process line 1 of the display */
    buf[0] = t1;
    buf[1] = t1L1;
-   strcpyinto(buf[2], format(t1V1), 6);
+   strcpyinto(&buf[2], format(t1V1), 6);
    buf[8] = ' ';
    buf[9] = t1L2;
-   strcpyinto(buf[10], format(t1V2), 6);
+   strcpyinto(&buf[10], format(t1V2), 6);
    buf[16] = 0;
    LCD::gotoXY(0,0);
    LCD::print(buf);
 
+   /* Process line 2 of the display */
    buf[0] = t2;
    buf[1] = t2L1;
-   strcpyinto(buf[2], format(t2V1), 6);
+   strcpyinto(&buf[2], format(t2V1), 6);
    buf[8] = ' ';
    buf[9] = t2L2;
-   strcpyinto(buf[10], format(t2V2), 6);
+   strcpyinto(&buf[10], format(t2V2), 6);
    buf[16] = 0;
    LCD::gotoXY(0,1);
    LCD::print(buf);
