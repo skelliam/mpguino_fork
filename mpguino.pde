@@ -471,17 +471,21 @@ void doDisplayBigTank()    {bigNum(tank.mpg(),"TANK","MPG ");}
 void doDisplayCurrentTripData(void){tDisplay(&current);}   //display current trip formatted data.        
 void doDisplayTankTripData(void){tDisplay(&tank);}      //display tank trip formatted data.        
 void doDisplaySystemInfo(void){      
+   strcpyinto(&buf1[0], "C%", 2);
+   strcpyinto(&buf1[2], format(maxLoopLength*1000/(looptime/100)), 6);
+   strcpyinto(&buf1[8], " T", 2);
+   strcpyinto(&buf1[10], format(tank.time()), 6);
+   buf1[16] = 0;
    LCD::gotoXY(0,0);
-   LCD::print("C%");
-   LCD::print(format(maxLoopLength*1000/(looptime/100)));
-   LCD::print(" T"); 
-   LCD::print(format(tank.time()));
-   
+   LCD::print(buf1);  
+
    unsigned long mem = memoryTest();      
    mem*=1000;      
+   strcpyinto(&buf2[0], "FREE MEM: ", 10);
+   strcpyinto(&buf2[10], format(mem), 6);
+   buf2[16] = 0;
    LCD::gotoXY(0,1);
-   LCD::print("FREE MEM: ");
-   LCD::print(format(mem));      
+   LCD::print(buf2);
 }    //display max cpu utilization and ram.        
  
 void displayTripCombo(char t1, char t1L1, unsigned long t1V1, char t1L2, unsigned long t1V2, 
@@ -533,7 +537,7 @@ void tDisplay( void * r){ //display trip functions.
    strcpyinto(&buf1[2], format(t->mph()), 6);
    strcpyinto(&buf1[8], "MG", 2);
    strcpyinto(&buf1[10], format(t->mpg()), 6);
-   buf1[16] = 0;
+   buf1[16] = 0;  /* null terminated */
    LCD::gotoXY(0,0);  
    LCD::print(buf1);
 
@@ -541,7 +545,7 @@ void tDisplay( void * r){ //display trip functions.
    strcpyinto(&buf2[2], format(t->miles()), 6);
    strcpyinto(&buf2[8], "GA", 2);
    strcpyinto(&buf2[10], format(t->gallons()), 6);
-   buf2[16] = 0;
+   buf2[16] = 0;  /* null terminated */
    LCD::gotoXY(0,1);
    LCD::print(buf2);
 }      
