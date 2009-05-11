@@ -6,12 +6,43 @@
 #include <EEPROM.h>
 #include "mpguino.h"
 
+#define LcdCharHeightPix  8
+#define bufsize          17
 /* --- Global Variable Declarations -------------------------- */
 
 unsigned long  parms[]={95ul,8208ul,500000000ul,3ul,420000000ul,10300ul,500ul,2400ul,0ul,2ul};//default values
 char *parmLabels[]={"Contrast","VSS Pulses/Mile", "MicroSec/Gallon","Pulses/2 revs","Timout(microSec)","Tank Gal * 1000","Injector DelayuS","Weight (lbs)","Scratchpad(odo?)","VSS Delay ms"};
-const unsigned char LcdCharHeightPix = 8;
 unsigned long maxLoopLength = 0;            // see if we are overutilizing the CPU      
+static char buf1[bufsize];
+static char buf2[bufsize];
+//for display computing
+static unsigned long tmp1[2];
+static unsigned long tmp2[2];
+static unsigned long tmp3[2];
+
+#if (CFG_BIGFONT_TYPE == 1)
+  static char chars[] PROGMEM = {
+    B11111,B00000,B11111,B11111,B00000,
+    B11111,B00000,B11111,B11111,B00000,
+    B11111,B00000,B11111,B11111,B00000,
+    B00000,B00000,B00000,B11111,B00000,
+    B00000,B00000,B00000,B11111,B00000,
+    B00000,B11111,B11111,B11111,B01110,
+    B00000,B11111,B11111,B11111,B01110,
+    B00000,B11111,B11111,B11111,B01110};
+#elif (CFG_BIGFONT_TYPE == 2)
+  /* XXX: For whatever reason I can not figure out how 
+   * to store more than 8 chars in the LCD CGRAM */
+  static char chars[] PROGMEM = {
+    B11111, B00000, B11111, B11111, B00000, B11111, B00111, B11100, 
+    B11111, B00000, B11111, B11111, B00000, B11111, B01111, B11110, 
+    B00000, B00000, B00000, B11111, B00000, B11111, B11111, B11111, 
+    B00000, B00000, B00000, B11111, B00000, B11111, B11111, B11111, 
+    B00000, B00000, B00000, B11111, B00000, B11111, B11111, B11111, 
+    B00000, B00000, B00000, B11111, B01110, B11111, B11111, B11111,
+    B00000, B11111, B11111, B01111, B01110, B11110, B11111, B11111,
+    B00000, B11111, B11111, B00111, B01110, B11100, B11111, B11111};
+#endif
 
 #if (CFG_BIGFONT_TYPE == 1)
    //32 = 0x20 = space
@@ -104,8 +135,9 @@ unsigned long microSeconds (void){
 }    
  
 unsigned long elapsedMicroseconds(unsigned long startMicroSeconds, unsigned long currentMicroseconds ){      
-  if(currentMicroseconds >= startMicroSeconds)      
+  if(currentMicroseconds >= startMicroSeconds) {
     return currentMicroseconds-startMicroSeconds;      
+  }
   return 4294967295 - (startMicroSeconds-currentMicroseconds);      
 }      
 
@@ -200,71 +232,69 @@ pFunc displayFuncs[] ={
   doDisplayEOCIdleData, 
   doDisplaySystemInfo,
 };      
+
 #define displayFuncSize (sizeof(displayFuncs)/sizeof(pFunc)) //array size      
 prog_char  * displayFuncNames[displayFuncSize]; 
 byte newRun = 0;
-void setup (void){
-  init2();
-  newRun = load();//load the default parameters
-  byte x = 0;
-  displayFuncNames[x++]=  PSTR("Custom  "); 
-  displayFuncNames[x++]=  PSTR("Instant/Current "); 
-  displayFuncNames[x++]=  PSTR("Instant/Tank "); 
-  displayFuncNames[x++]=  PSTR("BIG Instant "); 
-  displayFuncNames[x++]=  PSTR("BIG Current "); 
-  displayFuncNames[x++]=  PSTR("BIG Tank "); 
-  displayFuncNames[x++]=  PSTR("Current "); 
-  displayFuncNames[x++]=  PSTR("Tank "); 
-  displayFuncNames[x++]=  PSTR("EOC mi/Idle gal "); 
-  displayFuncNames[x++]=  PSTR("CPU Monitor ");      
- 
-  pinMode(BrightnessPin,OUTPUT);      
-  analogWrite(BrightnessPin,brightness[brightnessIdx]);      
-  pinMode(EnablePin,OUTPUT);       
-  pinMode(DIPin,OUTPUT);       
-  pinMode(DB4Pin,OUTPUT);       
-  pinMode(DB5Pin,OUTPUT);       
-  pinMode(DB6Pin,OUTPUT);       
-  pinMode(DB7Pin,OUTPUT);       
-  delay2(500);      
- 
-  pinMode(ContrastPin,OUTPUT);      
-  analogWrite(ContrastPin,parms[contrastIdx]);  
-  LCD::init();      
-  LCD::LcdCommandWrite(LCD_ClearDisplay);            // clear display, set cursor position to zero         
-  LCD::LcdCommandWrite(LCD_SetDDRAM);                // set dram to zero
-  LCD::gotoXY(0,0); 
-  LCD::print(getStr(PSTR("OpenGauge       ")));      
-  LCD::gotoXY(0,1);      
-  LCD::print(getStr(PSTR("  MPGuino v0.75S")));
 
-  pinMode(InjectorOpenPin, INPUT);       
-  pinMode(InjectorClosedPin, INPUT);       
-  pinMode(VSSPin, INPUT);            
-  attachInterrupt(0, processInjOpen, FALLING);      
-  attachInterrupt(1, processInjClosed, RISING);      
- 
-  pinMode( lbuttonPin, INPUT );       
-  pinMode( mbuttonPin, INPUT );       
-  pinMode( rbuttonPin, INPUT );      
- 
- 
-  //"turn on" the internal pullup resistors      
-  digitalWrite( lbuttonPin, HIGH);       
-  digitalWrite( mbuttonPin, HIGH);       
-  digitalWrite( rbuttonPin, HIGH);       
-//  digitalWrite( VSSPin, HIGH);       
- 
-  //low level interrupt enable stuff      
-  PCMSK1 |= (1 << PCINT8);
-  enableLButton();
-  enableMButton();
-  enableRButton();
-  PCICR |= (1 << PCIE1);       
- 
-  delay2(1500);       
+void setup (void) {
+   init2();
+   newRun = load();//load the default parameters
+   byte x = 0;
+   displayFuncNames[x++]=  PSTR("Custom  "); 
+   displayFuncNames[x++]=  PSTR("Instant/Current "); 
+   displayFuncNames[x++]=  PSTR("Instant/Tank "); 
+   displayFuncNames[x++]=  PSTR("BIG Instant "); 
+   displayFuncNames[x++]=  PSTR("BIG Current "); 
+   displayFuncNames[x++]=  PSTR("BIG Tank "); 
+   displayFuncNames[x++]=  PSTR("Current "); 
+   displayFuncNames[x++]=  PSTR("Tank "); 
+   displayFuncNames[x++]=  PSTR("EOC mi/Idle gal "); 
+   displayFuncNames[x++]=  PSTR("CPU Monitor ");      
 
+   pinMode(BrightnessPin,OUTPUT);      
+   analogWrite(BrightnessPin,brightness[brightnessIdx]);      
+   pinMode(EnablePin,OUTPUT);       
+   pinMode(DIPin,OUTPUT);       
+   pinMode(DB4Pin,OUTPUT);       
+   pinMode(DB5Pin,OUTPUT);       
+   pinMode(DB6Pin,OUTPUT);       
+   pinMode(DB7Pin,OUTPUT);       
+   delay2(500);      
 
+   pinMode(ContrastPin,OUTPUT);      
+   analogWrite(ContrastPin,parms[contrastIdx]);  
+   LCD::init();      
+   LCD::LcdCommandWrite(LCD_ClearDisplay);            // clear display, set cursor position to zero         
+   LCD::LcdCommandWrite(LCD_SetDDRAM);                // set dram to zero
+   LCD::print(getStr(PSTR("OpenGauge       ")));      
+   LCD::gotoXY(0,1);      
+   LCD::print(getStr(PSTR("  MPGuino v0.75S")));
+
+   pinMode(InjectorOpenPin, INPUT);       
+   pinMode(InjectorClosedPin, INPUT);       
+   pinMode(VSSPin, INPUT);            
+   attachInterrupt(0, processInjOpen, FALLING);      
+   attachInterrupt(1, processInjClosed, RISING);      
+
+   pinMode( lbuttonPin, INPUT );       
+   pinMode( mbuttonPin, INPUT );       
+   pinMode( rbuttonPin, INPUT );      
+
+   //"turn on" the internal pullup resistors      
+   digitalWrite( lbuttonPin, HIGH);       
+   digitalWrite( mbuttonPin, HIGH);       
+   digitalWrite( rbuttonPin, HIGH);       
+   //  digitalWrite( VSSPin, HIGH);       
+
+   //low level interrupt enable stuff      
+   PCMSK1 |= (1 << PCINT8);
+   enableLButton();
+   enableMButton();
+   enableRButton();
+   PCICR |= (1 << PCIE1);       
+
+   delay2(1500);       
 }       
  
 byte screen=0;      
@@ -321,28 +351,28 @@ void loop (void){
 //currentTripResetTimeoutUS
     if(instant.var[Trip::vssPulses] == 0 && instant.var[Trip::injPulses] == 0 && holdDisplay==0){
       if(elapsedMicroseconds(lastActivity) > parms[currentTripResetTimeoutUSIdx] && lastActivity != nil){
-        #if (TANK_IN_EEPROM_CFG)
+#if (TANK_IN_EEPROM_CFG)
         writeEepBlock32(eepBlkAddr_Tank, &tank.var[0], eepBlkSize_Tank);
-        #endif
-        #if (SLEEP_CFG & Sleep_bkl)
+#endif
+#if (SLEEP_CFG & Sleep_bkl)
         analogWrite(BrightnessPin,brightness[0]);    //nitey night
-        #endif
-        #if (SLEEP_CFG & Sleep_lcd)
+#endif
+#if (SLEEP_CFG & Sleep_lcd)
         LCD::LcdCommandWrite(LCD_DisplayOnOffCtrl);  //LCD off unless explicitly told ON
-        #endif
+#endif
         lastActivity = nil;
       }
     }else{
       if(lastActivity == nil){//wake up!!!
-        #if (SLEEP_CFG & Sleep_bkl)
+#if (SLEEP_CFG & Sleep_bkl)
         analogWrite(BrightnessPin,brightness[brightnessIdx]);    
-        #endif
-        #if (SLEEP_CFG & Sleep_lcd)
+#endif
+#if (SLEEP_CFG & Sleep_lcd)
         // Turn on the LCD again.  Display should be restored.
         LCD::LcdCommandWrite(LCD_DisplayOnOffCtrl | LCD_DisplayOnOffCtrl_DispOn);
         // TODO:  Does the above cause a problem if sleep happens during a settings mode? 
         //        Said another way, we don't get the cursor back unless we ask for it.
-        #endif
+#endif
         lastActivity=loopStart;
         current.reset();
         tank.var[Trip::loopCount] = tankHold;
@@ -359,10 +389,31 @@ void loop (void){
     }
     
 
- if(holdDisplay==0){
+ if(holdDisplay==0) {
     displayFuncs[screen]();    //call the appropriate display routine      
-    LCD::gotoXY(0,0);        
-    
+
+#if (CFG_FUELCUT_INDICATOR == 1)
+    /* overwrite top left corner of LCD with a visual indication that fuel cut is happening */
+    if((instant.var[Trip::injPulses] == 0) && (instant.var[Trip::vssPulses] > 0)) {
+       buf1[0] = '*';
+    }
+#endif
+
+    /* ensure that we have terminating zeros */
+    buf1[16] = 0;
+    buf2[16] = 0;
+
+    /* print line 1 */
+    LCD::LcdCommandWrite(LCD_ReturnHome);
+    LCD::print(buf1);
+
+    /* print line 2 */
+    LCD::gotoXY(0,1);
+    LCD::print(buf2);
+
+    LCD::LcdCommandWrite(LCD_ReturnHome);
+
+ 
 //see if any buttons were pressed, display a brief message if so      
       if(!(buttonState&lbuttonBit) && !(buttonState&rbuttonBit)){// left and right = initialize      
           LCD::print(getStr(PSTR("Setup ")));    
@@ -391,9 +442,10 @@ void loop (void){
       }      
       if(buttonState!=buttonsUp)
          holdDisplay=1;
-     }else{
+     }
+     else {
         holdDisplay=0;
-    } 
+     } 
     buttonState=buttonsUp;//reset the buttons      
  
       //keep track of how long the loops take before we go int waiting.      
@@ -406,39 +458,46 @@ void loop (void){
 }       
  
  
-char fBuff[7];//used by format    
+char *format(unsigned long num) {
+   static char fBuff[7];  //used by format
+   unsigned char dp = 3;
+   unsigned char x = 6;
 
-char* format(unsigned long num){
-  byte dp = 3;
-
-  while(num > 999999){
-    num /= 10;
-    dp++;
-    if( dp == 5 ) break; // We'll lose the top numbers like an odometer
-  }
-  if(dp == 5) dp = 99; // We don't need a decimal point here.
-
-// Round off the non-printed value.
-  if((num % 10) > 4)
-    num += 10;
-  num /= 10;
-  byte x = 6;
-  while(x > 0){
-    x--;
-    if(x==dp){ //time to poke in the decimal point?{
-      fBuff[x]='.';
-    }else{
-      fBuff[x]= '0' + (num % 10);//poke the ascii character for the digit.
+   while(num > 999999) {
       num /= 10;
-    } 
-  }
-  fBuff[6] = 0;
-  return fBuff;
+      dp++;
+      if( dp == 5 ) break; /* We'll lose the top numbers like an odometer */
+   }
+   if(dp == 5) dp = 99; /* We don't need a decimal point here. */
+
+   /* Round off the non-printed value. */
+   if((num % 10) > 4) {
+      num += 10;
+   }
+
+   num /= 10;
+
+
+   while(x > 0){
+      x--;
+      if(x==dp) {
+         /* time to poke in the decimal point? */
+         fBuff[x]='.';
+      }
+      else {
+         /* poke the ascii character for the digit. */
+         fBuff[x]= '0' + (num % 10);
+         num /= 10;
+      }
+   }
+
+   fBuff[6] = 0;
+   return fBuff;
 }
  
 //get a string from flash 
-char mBuff[17];//used by getStr 
 char * getStr(prog_char * str){ 
+  static char mBuff[17]; //used by getStr 
   strcpy_P(mBuff, str); 
   return mBuff; 
 } 
@@ -459,45 +518,70 @@ void doDisplayBigTank()    {bigNum(tank.mpg(),"TANK","MPG ");}
 void doDisplayCurrentTripData(void){tDisplay(&current);}   //display current trip formatted data.        
 void doDisplayTankTripData(void){tDisplay(&tank);}      //display tank trip formatted data.        
 void doDisplaySystemInfo(void){      
-  LCD::gotoXY(0,0);LCD::print("C%");LCD::print(format(maxLoopLength*1000/(looptime/100)));LCD::print(" T"); LCD::print(format(tank.time()));     
-  unsigned long mem = memoryTest();      
-  mem*=1000;      
-  LCD::gotoXY(0,1);
-  LCD::print("FREE MEM: ");
-  LCD::print(format(mem));      
+   strcpy(&buf1[0], "C%");
+   strcpy(&buf1[2], format(maxLoopLength*1000/(looptime/100)));
+   strcpy(&buf1[8], " T");
+   strcpy(&buf1[10], format(tank.time()));
+
+   unsigned long mem = memoryTest();      
+   mem*=1000;      
+   strcpy(&buf2[0], "FREE MEM: ");
+   strcpy(&buf2[10], format(mem));
 }    //display max cpu utilization and ram.        
  
-void displayTripCombo(char t1, char t1L1, unsigned long t1V1, char t1L2, unsigned long t1V2,  char t2, char t2L1, unsigned long t2V1, char t2L2, unsigned long t2V2){ 
-  LCD::gotoXY(0,0);LCD::LcdDataWrite(t1);LCD::LcdDataWrite(t1L1);LCD::print(format(t1V1));LCD::LcdDataWrite(' '); 
-      LCD::LcdDataWrite(t1L2);LCD::print(format(t1V2)); 
-  LCD::gotoXY(0,1);LCD::LcdDataWrite(t2);LCD::LcdDataWrite(t2L1);LCD::print(format(t2V1));LCD::LcdDataWrite(' '); 
-      LCD::LcdDataWrite(t2L2);LCD::print(format(t2V2)); 
+void displayTripCombo(char t1, char t1L1, unsigned long t1V1, char t1L2, unsigned long t1V2, 
+                      char t2, char t2L1, unsigned long t2V1, char t2L2, unsigned long t2V2) {
+   /* Process line 1 of the display */
+   buf1[0] = t1;
+   buf1[1] = t1L1;
+   strcpy(&buf1[2], format(t1V1));
+   buf1[8] = ' ';
+   buf1[9] = t1L2;
+   strcpy(&buf1[10], format(t1V2));
+
+   /* Process line 2 of the display */
+   buf2[0] = t2;
+   buf2[1] = t2L1;
+   strcpy(&buf2[2], format(t2V1));
+   buf2[8] = ' ';
+   buf2[9] = t2L2;
+   strcpy(&buf2[10], format(t2V2));
 }      
  
 //arduino doesn't do well with types defined in a script as parameters, so have to pass as void * and use -> notation.      
 void tDisplay( void * r){ //display trip functions.        
-  Trip *t = (Trip *)r;      
-  LCD::gotoXY(0,0);LCD::print("MH");LCD::print(format(t->mph()));LCD::print("MG");LCD::print(format(t->mpg()));      
-  LCD::gotoXY(0,1);LCD::print("MI");LCD::print(format(t->miles()));LCD::print("GA");LCD::print(format(t->gallons()));      
+   Trip *t = (Trip *)r;      
+
+   strcpy(&buf1[0], "MH");
+   strcpy(&buf1[2], format(t->mph()));
+   strcpy(&buf1[8], "MG");
+   strcpy(&buf1[10], format(t->mpg()));
+
+   strcpy(&buf2[0], "MI");
+   strcpy(&buf2[2], format(t->miles()));
+   strcpy(&buf2[8], "GA");
+   strcpy(&buf2[10], format(t->gallons()));
 }      
- 
- 
- 
     
 //x=0..16, y= 0..1      
 void LCD::gotoXY(byte x, byte y){      
-  byte dr=x+0x80;      
-  if (y==1)       
-    dr += 0x40;      
-  if (y==2)       
-    dr += 0x14;      
-  if (y==3)       
-    dr += 0x54;      
+  unsigned char dr=x+0x80;
+  switch (y) {
+     case 1:
+       dr += 0x40;      
+       break;
+     case 2:
+       dr += 0x14;      
+       break;
+     case 3:
+       dr += 0x54;      
+       break;
+  }
   LCD::LcdCommandWrite(dr);        
 }      
  
 void LCD::print(char * string){      
-  byte x = 0;      
+  unsigned char x = 0;      
   char c = string[x];      
   while(c != 0){      
     LCD::LcdDataWrite(c);       
@@ -534,39 +618,22 @@ void LCD::init(){
 //creating the custom fonts:
   LcdCommandWrite(LCD_SetCGRAM | 0x08);  // write to CGen RAM
 
-#if (CFG_BIGFONT_TYPE == 1)
-  static byte chars[] PROGMEM = {
-    B11111,B00000,B11111,B11111,B00000,
-    B11111,B00000,B11111,B11111,B00000,
-    B11111,B00000,B11111,B11111,B00000,
-    B00000,B00000,B00000,B11111,B00000,
-    B00000,B00000,B00000,B11111,B00000,
-    B00000,B11111,B11111,B11111,B01110,
-    B00000,B11111,B11111,B11111,B01110,
-    B00000,B11111,B11111,B11111,B01110};
-#elif (CFG_BIGFONT_TYPE == 2)
-  /* XXX: For whatever reason I can not figure out how 
-   * to store more than 8 chars in the LCD CGRAM */
-  static byte chars[] PROGMEM = {
-    B11111, B00000, B11111, B11111, B00000, B11111, B00111, B11100, 
-    B11111, B00000, B11111, B11111, B00000, B11111, B01111, B11110, 
-    B00000, B00000, B00000, B11111, B00000, B11111, B11111, B11111, 
-    B00000, B00000, B00000, B11111, B00000, B11111, B11111, B11111, 
-    B00000, B00000, B00000, B11111, B00000, B11111, B11111, B11111, 
-    B00000, B00000, B00000, B11111, B01110, B11111, B11111, B11111,
-    B00000, B11111, B11111, B01111, B01110, B11110, B11111, B11111,
-    B00000, B11111, B11111, B00111, B01110, B11100, B11111, B11111};
-#endif
 
-    /* write the character data to the character generator ram */
-    for(byte x=0;x<LcdNewChars;x++) {
-      for(byte y=0;y<LcdCharHeightPix;y++) {
-          LcdDataWrite(pgm_read_byte(&chars[y*LcdNewChars+x])); 
-      }
-    }
+
+  writeCGRAM(&chars[0], LcdNewChars);
 
   LcdCommandWrite(LCD_ClearDisplay);       // clear display, set cursor position to zero
   LcdCommandWrite(LCD_SetDDRAM);           // set dram to zero
+}
+
+void  LCD::writeCGRAM(char *newchars, unsigned char numnew) {
+   unsigned char x, y;
+   /* write the character data to the character generator ram */
+   for(x=0; x<numnew; x++) {
+      for(y=0; y<LcdCharHeightPix; y++) {
+         LcdDataWrite(pgm_read_byte(&newchars[y*LcdNewChars+x])); 
+      }
+   }
 }
 
 void  LCD::tickleEnable(){       
@@ -632,10 +699,6 @@ int memoryTest(){
 Trip::Trip(){      
 }      
  
-//for display computing
-unsigned long tmp1[2];
-unsigned long tmp2[2];
-unsigned long tmp3[2];
 
 unsigned long instantmph(){      
   //unsigned long vssPulseTimeuS = (lastVSS1 + lastVSS2) / 2;
@@ -830,7 +893,7 @@ void Trip::update(Trip t){
 
  
 void bigNum (unsigned long t, char * txt1, char * txt2){      
-  char  dp = 32;       // 32 = 0x20 = space
+  char dp = 32;       // 32 = 0x20 = space
   char *r = "009.99";  // default to 999
   if(t<=99500){ 
      r=format(t/10);   // 009.86 
@@ -840,23 +903,21 @@ void bigNum (unsigned long t, char * txt1, char * txt2){
      r=format(t/100);  // 009.86 
   }   
  
-  LCD::gotoXY(0,0); 
-  LCD::print(bignumchars1+(r[2]-'0')*4); 
-  LCD::print(" "); 
-  LCD::print(bignumchars1+(r[4]-'0')*4); 
-  LCD::print(" "); 
-  LCD::print(bignumchars1+(r[5]-'0')*4); 
-  LCD::print(" "); 
-  LCD::print(txt1); 
+  strcpy(&buf1[0], (bignumchars1+(r[2]-'0')*4));
+  buf1[3] = ' ';
+  strcpy(&buf1[4], (bignumchars1+(r[4]-'0')*4));
+  buf1[7] = ' ';
+  strcpy(&buf1[8], (bignumchars1+(r[5]-'0')*4));
+  buf1[11] = ' ';
+  strcpy(&buf1[12], txt1);
  
-  LCD::gotoXY(0,1); 
-  LCD::print(bignumchars2+(r[2]-'0')*4); 
-  LCD::print(" "); 
-  LCD::print(bignumchars2+(r[4]-'0')*4); 
-  LCD::LcdDataWrite(dp);  /* decimal point */
-  LCD::print(bignumchars2+(r[5]-'0')*4); 
-  LCD::print(" "); 
-  LCD::print(txt2); 
+  strcpy(&buf2[0], (bignumchars2+(r[2]-'0')*4));
+  buf2[3] = ' ';
+  strcpy(&buf2[4], (bignumchars2+(r[4]-'0')*4));
+  buf2[7] = dp;
+  strcpy(&buf2[8], (bignumchars2+(r[5]-'0')*4));
+  buf2[11] = ' ';
+  strcpy(&buf2[12], txt2);
 }      
 
 
@@ -1022,8 +1083,10 @@ byte load(){ //return 1 if loaded ok
 }
 
 char * uformat(unsigned long val){ 
+  static char mBuff[17];
   unsigned long d = 1000000000ul;
-  for(byte p = 0; p < 10 ; p++){
+  unsigned char p;
+  for(p = 0; p < 10 ; p++){
     mBuff[p]='0' + (val/d);
     val=val-(val/d*d);
     d/=10;
@@ -1044,33 +1107,41 @@ unsigned long rformat(char * val){
 
 
 void editParm(byte parmIdx){
-  unsigned long v = parms[parmIdx];
-  byte p=9;  //right end of 10 digit number
-  //display label on top line
-  //set cursor visible
-  //set pos = 0
-  //display v
+   unsigned long v = parms[parmIdx];
+   unsigned char p=9;  //right end of 10 digit number
+   unsigned char keyLock=1;    
+   char *fmtv = uformat(v);
 
-    LCD::gotoXY(8,0);        
-    LCD::print("        ");
-    LCD::gotoXY(0,0);        
-    LCD::print(parmLabels[parmIdx]);
-    LCD::gotoXY(0,1);    
-    char * fmtv=    uformat(v);
-    LCD::print(fmtv);
-    LCD::print(" OK XX");
-    LCD::LcdCommandWrite(LCD_DisplayOnOffCtrl | LCD_DisplayOnOffCtrl_DispOn | LCD_DisplayOnOffCtrl_CursOn);
+   /* -- line 1 -- */
+   strcpy(&buf1[0], parmLabels[parmIdx]);
+
+   /* -- line 2 -- */
+   strcpy(&buf2[0], fmtv);
+   strcpy(&buf2[10], " OK XX");
+
+   /* -- write to display -- */
+   buf1[16] = 0; 
+   buf2[16] = 0;
+   LCD::LcdCommandWrite(LCD_ClearDisplay);
+   LCD::print(buf1);
+   LCD::gotoXY(0,1);    
+   LCD::print(buf2);
+
+   /* -- turn the cursor on -- */
+   LCD::LcdCommandWrite(LCD_DisplayOnOffCtrl | LCD_DisplayOnOffCtrl_DispOn | LCD_DisplayOnOffCtrl_CursOn);
+
 #if (CFG_NICE_CURSOR)
-    //do a nice thing and put the cursor at the first non zero number
-    for(int x=9 ; x>=0 ;x--){ 
-      if(fmtv[x] != '0')
+   //do a nice thing and put the cursor at the first non zero number
+   for(int x=9 ; x>=0 ;x--) { 
+      if(fmtv[x] != '0') {
          p=x; 
-    }
+      }
+   }
 #else
-    /* cursor on 'XX' by default except for contrast */
-    (parmIdx == contrastIdx) ? p=8 : p=11;  
+   /* cursor on 'XX' by default except for contrast */
+   (parmIdx == contrastIdx) ? p=8 : p=11;  
 #endif
-  byte keyLock=1;    
+
   while(true){
 
     if(p<10)
@@ -1080,8 +1151,8 @@ void editParm(byte parmIdx){
     if(p==11)     
       LCD::gotoXY(14,1);   
 
-     if(keyLock == 0){ 
-        if(!(buttonState&lbuttonBit) && !(buttonState&rbuttonBit)){// left & right
+     if(keyLock == 0) { 
+        if(!(buttonState&lbuttonBit) && !(buttonState&rbuttonBit)) {// left & right
             if (p<10)
                p=10;
             else if (p==10) 
@@ -1143,8 +1214,9 @@ void editParm(byte parmIdx){
 }
 
 void initGuino(){ //edit all the parameters
-  for(int x = 0;x<parmsLength;x++)
+  for(int x = 0;x<parmsLength;x++) {
     editParm(x);
+  }
   save();
   holdDisplay=1;
 }  

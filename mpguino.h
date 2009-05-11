@@ -123,9 +123,10 @@ namespace LCD{
   void gotoXY(byte x, byte y);      
   void print(char * string);      
   void init();      
+  void writeCGRAM(char *newchars, unsigned char numnew);
   void tickleEnable();      
   void cmdWriteSet();      
   void LcdCommandWrite(byte value);      
-  void LcdDataWrite(byte value);      
+  void LcdDataWrite(byte value);
   byte pushNibble(byte value);      
 };      
