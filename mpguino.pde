@@ -21,6 +21,30 @@ static unsigned long tmp2[2];
 static unsigned long tmp3[2];
 
 #if (CFG_BIGFONT_TYPE == 1)
+  static char chars[] PROGMEM = {
+    B11111,B00000,B11111,B11111,B00000,
+    B11111,B00000,B11111,B11111,B00000,
+    B11111,B00000,B11111,B11111,B00000,
+    B00000,B00000,B00000,B11111,B00000,
+    B00000,B00000,B00000,B11111,B00000,
+    B00000,B11111,B11111,B11111,B01110,
+    B00000,B11111,B11111,B11111,B01110,
+    B00000,B11111,B11111,B11111,B01110};
+#elif (CFG_BIGFONT_TYPE == 2)
+  /* XXX: For whatever reason I can not figure out how 
+   * to store more than 8 chars in the LCD CGRAM */
+  static char chars[] PROGMEM = {
+    B11111, B00000, B11111, B11111, B00000, B11111, B00111, B11100, 
+    B11111, B00000, B11111, B11111, B00000, B11111, B01111, B11110, 
+    B00000, B00000, B00000, B11111, B00000, B11111, B11111, B11111, 
+    B00000, B00000, B00000, B11111, B00000, B11111, B11111, B11111, 
+    B00000, B00000, B00000, B11111, B00000, B11111, B11111, B11111, 
+    B00000, B00000, B00000, B11111, B01110, B11111, B11111, B11111,
+    B00000, B11111, B11111, B01111, B01110, B11110, B11111, B11111,
+    B00000, B11111, B11111, B00111, B01110, B11100, B11111, B11111};
+#endif
+
+#if (CFG_BIGFONT_TYPE == 1)
    //32 = 0x20 = space
    const unsigned char LcdNewChars = 5;
    char bignumchars1[]={4,1,4,0, 1,4,32,0, 3,3,4,0, 1,3,4,0, 4,2,4,0,   4,3,3,0, 4,3,3,0, 1,1,4,0,   4,3,4,0, 4,3,4,0}; 
@@ -361,6 +385,13 @@ void loop (void){
  if(holdDisplay==0) {
     displayFuncs[screen]();    //call the appropriate display routine      
 
+#if (CFG_FUELCUT_INDICATOR == 1)
+    /* overwrite top left corner of LCD with a visual indication that fuel cut is happening */
+    if((instant.var[Trip::injPulses] == 0) && (instant.var[Trip::vssPulses] > 0)) {
+       buf1[0] = '*';
+    }
+#endif
+
     /* ensure that we have terminating zeros */
     buf1[16] = 0;
     buf2[16] = 0;
@@ -375,14 +406,7 @@ void loop (void){
 
     LCD::LcdCommandWrite(LCD_ReturnHome);
 
-#if (CFG_FUELCUT_INDICATOR == 1)
-    /* overwrite top left corner of LCD with a visual indication that fuel cut is happening */
-    if((instant.var[Trip::injPulses] == 0) && (instant.var[Trip::vssPulses] > 0)) {
-       LCD::LcdDataWrite(0x2A);  /* asterisk */
-       LCD::LcdCommandWrite(LCD_ReturnHome);
-    }
-#endif
-    
+ 
 //see if any buttons were pressed, display a brief message if so      
       if(!(buttonState&lbuttonBit) && !(buttonState&rbuttonBit)){// left and right = initialize      
           LCD::print(getStr(PSTR("Setup ")));    
@@ -587,39 +611,22 @@ void LCD::init(){
 //creating the custom fonts:
   LcdCommandWrite(LCD_SetCGRAM | 0x08);  // write to CGen RAM
 
-#if (CFG_BIGFONT_TYPE == 1)
-  static byte chars[] PROGMEM = {
-    B11111,B00000,B11111,B11111,B00000,
-    B11111,B00000,B11111,B11111,B00000,
-    B11111,B00000,B11111,B11111,B00000,
-    B00000,B00000,B00000,B11111,B00000,
-    B00000,B00000,B00000,B11111,B00000,
-    B00000,B11111,B11111,B11111,B01110,
-    B00000,B11111,B11111,B11111,B01110,
-    B00000,B11111,B11111,B11111,B01110};
-#elif (CFG_BIGFONT_TYPE == 2)
-  /* XXX: For whatever reason I can not figure out how 
-   * to store more than 8 chars in the LCD CGRAM */
-  static byte chars[] PROGMEM = {
-    B11111, B00000, B11111, B11111, B00000, B11111, B00111, B11100, 
-    B11111, B00000, B11111, B11111, B00000, B11111, B01111, B11110, 
-    B00000, B00000, B00000, B11111, B00000, B11111, B11111, B11111, 
-    B00000, B00000, B00000, B11111, B00000, B11111, B11111, B11111, 
-    B00000, B00000, B00000, B11111, B00000, B11111, B11111, B11111, 
-    B00000, B00000, B00000, B11111, B01110, B11111, B11111, B11111,
-    B00000, B11111, B11111, B01111, B01110, B11110, B11111, B11111,
-    B00000, B11111, B11111, B00111, B01110, B11100, B11111, B11111};
-#endif
 
-    /* write the character data to the character generator ram */
-    for(byte x=0;x<LcdNewChars;x++) {
-      for(byte y=0;y<LcdCharHeightPix;y++) {
-          LcdDataWrite(pgm_read_byte(&chars[y*LcdNewChars+x])); 
-      }
-    }
+
+  writeCGRAM(&chars[0], LcdNewChars);
 
   LcdCommandWrite(LCD_ClearDisplay);       // clear display, set cursor position to zero
   LcdCommandWrite(LCD_SetDDRAM);           // set dram to zero
+}
+
+void  LCD::writeCGRAM(char *newchars, unsigned char numnew) {
+   unsigned char x, y;
+   /* write the character data to the character generator ram */
+   for(x=0; x<numnew; x++) {
+      for(y=0; y<LcdCharHeightPix; y++) {
+         LcdDataWrite(pgm_read_byte(&newchars[y*LcdNewChars+x])); 
+      }
+   }
 }
 
 void  LCD::tickleEnable(){       
