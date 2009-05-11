@@ -152,7 +152,7 @@ Trip tmpTrip;
 Trip instant;      
 Trip current;      
 Trip tank;
-#if (BARGRAPH_DISPLAY_CFG == 1);
+#if (BARGRAPH_DISPLAY_CFG == 1)
 Trip fivemin;
 #endif
 
