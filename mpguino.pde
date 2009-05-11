@@ -6,15 +6,19 @@
 #include <EEPROM.h>
 #include "mpguino.h"
 
+#define LcdCharHeightPix  8
+#define bufsize          17
 /* --- Global Variable Declarations -------------------------- */
 
 unsigned long  parms[]={95ul,8208ul,500000000ul,3ul,420000000ul,10300ul,500ul,2400ul,0ul,2ul};//default values
 char *parmLabels[]={"Contrast","VSS Pulses/Mile", "MicroSec/Gallon","Pulses/2 revs","Timout(microSec)","Tank Gal * 1000","Injector DelayuS","Weight (lbs)","Scratchpad(odo?)","VSS Delay ms"};
-const unsigned char LcdCharHeightPix = 8;
 unsigned long maxLoopLength = 0;            // see if we are overutilizing the CPU      
-   #define bufsize    17
 static char buf1[bufsize];
 static char buf2[bufsize];
+//for display computing
+static unsigned long tmp1[2];
+static unsigned long tmp2[2];
+static unsigned long tmp3[2];
 
 #if (CFG_BIGFONT_TYPE == 1)
    //32 = 0x20 = space
@@ -107,8 +111,9 @@ unsigned long microSeconds (void){
 }    
  
 unsigned long elapsedMicroseconds(unsigned long startMicroSeconds, unsigned long currentMicroseconds ){      
-  if(currentMicroseconds >= startMicroSeconds)      
+  if(currentMicroseconds >= startMicroSeconds) {
     return currentMicroseconds-startMicroSeconds;      
+  }
   return 4294967295 - (startMicroSeconds-currentMicroseconds);      
 }      
 
@@ -203,71 +208,69 @@ pFunc displayFuncs[] ={
   doDisplayEOCIdleData, 
   doDisplaySystemInfo,
 };      
+
 #define displayFuncSize (sizeof(displayFuncs)/sizeof(pFunc)) //array size      
 prog_char  * displayFuncNames[displayFuncSize]; 
 byte newRun = 0;
-void setup (void){
-  init2();
-  newRun = load();//load the default parameters
-  byte x = 0;
-  displayFuncNames[x++]=  PSTR("Custom  "); 
-  displayFuncNames[x++]=  PSTR("Instant/Current "); 
-  displayFuncNames[x++]=  PSTR("Instant/Tank "); 
-  displayFuncNames[x++]=  PSTR("BIG Instant "); 
-  displayFuncNames[x++]=  PSTR("BIG Current "); 
-  displayFuncNames[x++]=  PSTR("BIG Tank "); 
-  displayFuncNames[x++]=  PSTR("Current "); 
-  displayFuncNames[x++]=  PSTR("Tank "); 
-  displayFuncNames[x++]=  PSTR("EOC mi/Idle gal "); 
-  displayFuncNames[x++]=  PSTR("CPU Monitor ");      
- 
-  pinMode(BrightnessPin,OUTPUT);      
-  analogWrite(BrightnessPin,brightness[brightnessIdx]);      
-  pinMode(EnablePin,OUTPUT);       
-  pinMode(DIPin,OUTPUT);       
-  pinMode(DB4Pin,OUTPUT);       
-  pinMode(DB5Pin,OUTPUT);       
-  pinMode(DB6Pin,OUTPUT);       
-  pinMode(DB7Pin,OUTPUT);       
-  delay2(500);      
- 
-  pinMode(ContrastPin,OUTPUT);      
-  analogWrite(ContrastPin,parms[contrastIdx]);  
-  LCD::init();      
-  LCD::LcdCommandWrite(LCD_ClearDisplay);            // clear display, set cursor position to zero         
-  LCD::LcdCommandWrite(LCD_SetDDRAM);                // set dram to zero
-  LCD::gotoXY(0,0); 
-  LCD::print(getStr(PSTR("OpenGauge       ")));      
-  LCD::gotoXY(0,1);      
-  LCD::print(getStr(PSTR("  MPGuino v0.75S")));
 
-  pinMode(InjectorOpenPin, INPUT);       
-  pinMode(InjectorClosedPin, INPUT);       
-  pinMode(VSSPin, INPUT);            
-  attachInterrupt(0, processInjOpen, FALLING);      
-  attachInterrupt(1, processInjClosed, RISING);      
- 
-  pinMode( lbuttonPin, INPUT );       
-  pinMode( mbuttonPin, INPUT );       
-  pinMode( rbuttonPin, INPUT );      
- 
- 
-  //"turn on" the internal pullup resistors      
-  digitalWrite( lbuttonPin, HIGH);       
-  digitalWrite( mbuttonPin, HIGH);       
-  digitalWrite( rbuttonPin, HIGH);       
-//  digitalWrite( VSSPin, HIGH);       
- 
-  //low level interrupt enable stuff      
-  PCMSK1 |= (1 << PCINT8);
-  enableLButton();
-  enableMButton();
-  enableRButton();
-  PCICR |= (1 << PCIE1);       
- 
-  delay2(1500);       
+void setup (void) {
+   init2();
+   newRun = load();//load the default parameters
+   byte x = 0;
+   displayFuncNames[x++]=  PSTR("Custom  "); 
+   displayFuncNames[x++]=  PSTR("Instant/Current "); 
+   displayFuncNames[x++]=  PSTR("Instant/Tank "); 
+   displayFuncNames[x++]=  PSTR("BIG Instant "); 
+   displayFuncNames[x++]=  PSTR("BIG Current "); 
+   displayFuncNames[x++]=  PSTR("BIG Tank "); 
+   displayFuncNames[x++]=  PSTR("Current "); 
+   displayFuncNames[x++]=  PSTR("Tank "); 
+   displayFuncNames[x++]=  PSTR("EOC mi/Idle gal "); 
+   displayFuncNames[x++]=  PSTR("CPU Monitor ");      
 
+   pinMode(BrightnessPin,OUTPUT);      
+   analogWrite(BrightnessPin,brightness[brightnessIdx]);      
+   pinMode(EnablePin,OUTPUT);       
+   pinMode(DIPin,OUTPUT);       
+   pinMode(DB4Pin,OUTPUT);       
+   pinMode(DB5Pin,OUTPUT);       
+   pinMode(DB6Pin,OUTPUT);       
+   pinMode(DB7Pin,OUTPUT);       
+   delay2(500);      
 
+   pinMode(ContrastPin,OUTPUT);      
+   analogWrite(ContrastPin,parms[contrastIdx]);  
+   LCD::init();      
+   LCD::LcdCommandWrite(LCD_ClearDisplay);            // clear display, set cursor position to zero         
+   LCD::LcdCommandWrite(LCD_SetDDRAM);                // set dram to zero
+   LCD::print(getStr(PSTR("OpenGauge       ")));      
+   LCD::gotoXY(0,1);      
+   LCD::print(getStr(PSTR("  MPGuino v0.75S")));
+
+   pinMode(InjectorOpenPin, INPUT);       
+   pinMode(InjectorClosedPin, INPUT);       
+   pinMode(VSSPin, INPUT);            
+   attachInterrupt(0, processInjOpen, FALLING);      
+   attachInterrupt(1, processInjClosed, RISING);      
+
+   pinMode( lbuttonPin, INPUT );       
+   pinMode( mbuttonPin, INPUT );       
+   pinMode( rbuttonPin, INPUT );      
+
+   //"turn on" the internal pullup resistors      
+   digitalWrite( lbuttonPin, HIGH);       
+   digitalWrite( mbuttonPin, HIGH);       
+   digitalWrite( rbuttonPin, HIGH);       
+   //  digitalWrite( VSSPin, HIGH);       
+
+   //low level interrupt enable stuff      
+   PCMSK1 |= (1 << PCINT8);
+   enableLButton();
+   enableMButton();
+   enableRButton();
+   PCICR |= (1 << PCIE1);       
+
+   delay2(1500);       
 }       
  
 byte screen=0;      
@@ -370,15 +373,13 @@ void loop (void){
     LCD::gotoXY(0,1);
     LCD::print(buf2);
 
-    /* reposition cursor at home */
     LCD::LcdCommandWrite(LCD_ReturnHome);
-    //LCD::gotoXY(0,0);
 
 #if (CFG_FUELCUT_INDICATOR == 1)
     /* overwrite top left corner of LCD with a visual indication that fuel cut is happening */
     if((instant.var[Trip::injPulses] == 0) && (instant.var[Trip::vssPulses] > 0)) {
        LCD::LcdDataWrite(0x2A);  /* asterisk */
-       LCD::gotoXY(0,0);         /* put cursor back where we found it */
+       LCD::LcdCommandWrite(LCD_ReturnHome);
     }
 #endif
     
@@ -533,18 +534,23 @@ void tDisplay( void * r){ //display trip functions.
     
 //x=0..16, y= 0..1      
 void LCD::gotoXY(byte x, byte y){      
-  byte dr=x+0x80;      
-  if (y==1)       
-    dr += 0x40;      
-  if (y==2)       
-    dr += 0x14;      
-  if (y==3)       
-    dr += 0x54;      
+  unsigned char dr=x+0x80;
+  switch (y) {
+     case 1:
+       dr += 0x40;      
+       break;
+     case 2:
+       dr += 0x14;      
+       break;
+     case 3:
+       dr += 0x54;      
+       break;
+  }
   LCD::LcdCommandWrite(dr);        
 }      
  
 void LCD::print(char * string){      
-  byte x = 0;      
+  unsigned char x = 0;      
   char c = string[x];      
   while(c != 0){      
     LCD::LcdDataWrite(c);       
@@ -679,10 +685,6 @@ int memoryTest(){
 Trip::Trip(){      
 }      
  
-//for display computing
-unsigned long tmp1[2];
-unsigned long tmp2[2];
-unsigned long tmp3[2];
 
 unsigned long instantmph(){      
   //unsigned long vssPulseTimeuS = (lastVSS1 + lastVSS2) / 2;
@@ -1097,22 +1099,17 @@ void editParm(byte parmIdx){
    char *fmtv = uformat(v);
 
    /* -- line 1 -- */
-   LCD::LcdCommandWrite(LCD_ClearDisplay);
-
-   /* -- line 1 -- */
    strcpy(&buf1[0], parmLabels[parmIdx]);
-   
+
    /* -- line 2 -- */
    strcpy(&buf2[0], fmtv);
    strcpy(&buf2[10], " OK XX");
 
-
    /* -- write to display -- */
-   buf1[16] = 0;
+   buf1[16] = 0; 
    buf2[16] = 0;
-   LCD::gotoXY(0,0);
+   LCD::LcdCommandWrite(LCD_ClearDisplay);
    LCD::print(buf1);
-
    LCD::gotoXY(0,1);    
    LCD::print(buf2);
 
