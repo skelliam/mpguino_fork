@@ -16,7 +16,6 @@ unsigned long maxLoopLength = 0;            // see if we are overutilizing the C
 static char buf1[bufsize];
 static char buf2[bufsize];
 
-
 #if (CFG_BIGFONT_TYPE == 1)
    //32 = 0x20 = space
    const unsigned char LcdNewChars = 5;
@@ -356,9 +355,24 @@ void loop (void){
     }
     
 
- if(holdDisplay==0){
+ if(holdDisplay==0) {
     displayFuncs[screen]();    //call the appropriate display routine      
-    LCD::gotoXY(0,0);        
+
+    /* ensure that we have terminating zeros */
+    buf1[16] = 0;
+    buf2[16] = 0;
+
+    /* print line 1 */
+    LCD::LcdCommandWrite(LCD_ReturnHome);
+    LCD::print(buf1);
+
+    /* print line 2 */
+    LCD::gotoXY(0,1);
+    LCD::print(buf2);
+
+    /* reposition cursor at home */
+    LCD::LcdCommandWrite(LCD_ReturnHome);
+    //LCD::gotoXY(0,0);
 
 #if (CFG_FUELCUT_INDICATOR == 1)
     /* overwrite top left corner of LCD with a visual indication that fuel cut is happening */
@@ -396,9 +410,10 @@ void loop (void){
       }      
       if(buttonState!=buttonsUp)
          holdDisplay=1;
-     }else{
+     }
+     else {
         holdDisplay=0;
-    } 
+     } 
     buttonState=buttonsUp;//reset the buttons      
  
       //keep track of how long the loops take before we go int waiting.      
@@ -412,7 +427,7 @@ void loop (void){
  
  
 char *format(unsigned long num) {
-   static char fBuff[7];   
+   static char fBuff[7];  //used by format
    unsigned char dp = 3;
    unsigned char x = 6;
 
@@ -450,7 +465,7 @@ char *format(unsigned long num) {
  
 //get a string from flash 
 char * getStr(prog_char * str){ 
-  static char mBuff[17];//used by getStr 
+  static char mBuff[17]; //used by getStr 
   strcpy_P(mBuff, str); 
   return mBuff; 
 } 
@@ -471,83 +486,49 @@ void doDisplayBigTank()    {bigNum(tank.mpg(),"TANK","MPG ");}
 void doDisplayCurrentTripData(void){tDisplay(&current);}   //display current trip formatted data.        
 void doDisplayTankTripData(void){tDisplay(&tank);}      //display tank trip formatted data.        
 void doDisplaySystemInfo(void){      
-   strcpyinto(&buf1[0], "C%", 2);
-   strcpyinto(&buf1[2], format(maxLoopLength*1000/(looptime/100)), 6);
-   strcpyinto(&buf1[8], " T", 2);
-   strcpyinto(&buf1[10], format(tank.time()), 6);
-   buf1[16] = 0;
-   LCD::gotoXY(0,0);
-   LCD::print(buf1);  
+   strcpy(&buf1[0], "C%");
+   strcpy(&buf1[2], format(maxLoopLength*1000/(looptime/100)));
+   strcpy(&buf1[8], " T");
+   strcpy(&buf1[10], format(tank.time()));
 
    unsigned long mem = memoryTest();      
    mem*=1000;      
-   strcpyinto(&buf2[0], "FREE MEM: ", 10);
-   strcpyinto(&buf2[10], format(mem), 6);
-   buf2[16] = 0;
-   LCD::gotoXY(0,1);
-   LCD::print(buf2);
+   strcpy(&buf2[0], "FREE MEM: ");
+   strcpy(&buf2[10], format(mem));
 }    //display max cpu utilization and ram.        
  
 void displayTripCombo(char t1, char t1L1, unsigned long t1V1, char t1L2, unsigned long t1V2, 
                       char t2, char t2L1, unsigned long t2V1, char t2L2, unsigned long t2V2) {
-
-
-#if (0)
-   /* TODO:  Remove? */
-   /* this stuff is probably not needed as long
-    * as we are sure that we don't have any nulls
-    * in the final array.  This little loop adds
-    * like 30 bytes to the executable! */
-   int i;
-
-   /* set buffer initially to all spaces */
-   for (i=0; i<bufsize; i++) {
-      buf[i] = ' ';
-   }
-#endif
-
    /* Process line 1 of the display */
    buf1[0] = t1;
    buf1[1] = t1L1;
-   strcpyinto(&buf1[2], format(t1V1), 6);
+   strcpy(&buf1[2], format(t1V1));
    buf1[8] = ' ';
    buf1[9] = t1L2;
-   strcpyinto(&buf1[10], format(t1V2), 6);
-   buf1[16] = 0;  /* null terminated */
-   LCD::gotoXY(0,0);
-   LCD::print(buf1);
+   strcpy(&buf1[10], format(t1V2));
 
    /* Process line 2 of the display */
    buf2[0] = t2;
    buf2[1] = t2L1;
-   strcpyinto(&buf2[2], format(t2V1), 6);
+   strcpy(&buf2[2], format(t2V1));
    buf2[8] = ' ';
    buf2[9] = t2L2;
-   strcpyinto(&buf2[10], format(t2V2), 6);
-   buf2[16] = 0;  /* null terminated */
-   LCD::gotoXY(0,1);
-   LCD::print(buf2);
+   strcpy(&buf2[10], format(t2V2));
 }      
  
 //arduino doesn't do well with types defined in a script as parameters, so have to pass as void * and use -> notation.      
 void tDisplay( void * r){ //display trip functions.        
    Trip *t = (Trip *)r;      
 
-   strcpyinto(&buf1[0], "MH", 2);
-   strcpyinto(&buf1[2], format(t->mph()), 6);
-   strcpyinto(&buf1[8], "MG", 2);
-   strcpyinto(&buf1[10], format(t->mpg()), 6);
-   buf1[16] = 0;  /* null terminated */
-   LCD::gotoXY(0,0);  
-   LCD::print(buf1);
+   strcpy(&buf1[0], "MH");
+   strcpy(&buf1[2], format(t->mph()));
+   strcpy(&buf1[8], "MG");
+   strcpy(&buf1[10], format(t->mpg()));
 
-   strcpyinto(&buf2[0], "MI", 2);
-   strcpyinto(&buf2[2], format(t->miles()), 6);
-   strcpyinto(&buf2[8], "GA", 2);
-   strcpyinto(&buf2[10], format(t->gallons()), 6);
-   buf2[16] = 0;  /* null terminated */
-   LCD::gotoXY(0,1);
-   LCD::print(buf2);
+   strcpy(&buf2[0], "MI");
+   strcpy(&buf2[2], format(t->miles()));
+   strcpy(&buf2[8], "GA");
+   strcpy(&buf2[10], format(t->gallons()));
 }      
     
 //x=0..16, y= 0..1      
@@ -896,7 +877,7 @@ void Trip::update(Trip t){
 
  
 void bigNum (unsigned long t, char * txt1, char * txt2){      
-  char  dp = 32;       // 32 = 0x20 = space
+  char dp = 32;       // 32 = 0x20 = space
   char *r = "009.99";  // default to 999
   if(t<=99500){ 
      r=format(t/10);   // 009.86 
@@ -906,23 +887,21 @@ void bigNum (unsigned long t, char * txt1, char * txt2){
      r=format(t/100);  // 009.86 
   }   
  
-  LCD::gotoXY(0,0); 
-  LCD::print(bignumchars1+(r[2]-'0')*4); 
-  LCD::print(" "); 
-  LCD::print(bignumchars1+(r[4]-'0')*4); 
-  LCD::print(" "); 
-  LCD::print(bignumchars1+(r[5]-'0')*4); 
-  LCD::print(" "); 
-  LCD::print(txt1); 
+  strcpy(&buf1[0], (bignumchars1+(r[2]-'0')*4));
+  buf1[3] = ' ';
+  strcpy(&buf1[4], (bignumchars1+(r[4]-'0')*4));
+  buf1[7] = ' ';
+  strcpy(&buf1[8], (bignumchars1+(r[5]-'0')*4));
+  buf1[11] = ' ';
+  strcpy(&buf1[12], txt1);
  
-  LCD::gotoXY(0,1); 
-  LCD::print(bignumchars2+(r[2]-'0')*4); 
-  LCD::print(" "); 
-  LCD::print(bignumchars2+(r[4]-'0')*4); 
-  LCD::LcdDataWrite(dp);  /* decimal point */
-  LCD::print(bignumchars2+(r[5]-'0')*4); 
-  LCD::print(" "); 
-  LCD::print(txt2); 
+  strcpy(&buf2[0], (bignumchars2+(r[2]-'0')*4));
+  buf2[3] = ' ';
+  strcpy(&buf2[4], (bignumchars2+(r[4]-'0')*4));
+  buf2[7] = dp;
+  strcpy(&buf2[8], (bignumchars2+(r[5]-'0')*4));
+  buf2[11] = ' ';
+  strcpy(&buf2[12], txt2);
 }      
 
 
@@ -1066,13 +1045,6 @@ void readEepBlock32(unsigned int start_addr, unsigned long *val, unsigned int si
    }
 }
 
-void strcpyinto(char *buf, char *val, unsigned char len) {
-   unsigned char i = 0;
-   for (i=0; i<len; i++) {
-      buf[i]=val[i];
-   }
-}
-
 byte load(){ //return 1 if loaded ok
   #ifdef usedefaults
     return 1;
@@ -1095,9 +1067,10 @@ byte load(){ //return 1 if loaded ok
 }
 
 char * uformat(unsigned long val){ 
-  char mBuff[17];  //used by getStr 
+  static char mBuff[17];
   unsigned long d = 1000000000ul;
-  for(byte p = 0; p < 10 ; p++){
+  unsigned char p;
+  for(p = 0; p < 10 ; p++){
     mBuff[p]='0' + (val/d);
     val=val-(val/d*d);
     d/=10;
@@ -1118,33 +1091,46 @@ unsigned long rformat(char * val){
 
 
 void editParm(byte parmIdx){
-  unsigned long v = parms[parmIdx];
-  byte p=9;  //right end of 10 digit number
-  //display label on top line
-  //set cursor visible
-  //set pos = 0
-  //display v
+   unsigned long v = parms[parmIdx];
+   unsigned char p=9;  //right end of 10 digit number
+   unsigned char keyLock=1;    
+   char *fmtv = uformat(v);
 
-    LCD::gotoXY(8,0);        
-    LCD::print("        ");
-    LCD::gotoXY(0,0);        
-    LCD::print(parmLabels[parmIdx]);
-    LCD::gotoXY(0,1);    
-    char * fmtv=    uformat(v);
-    LCD::print(fmtv);
-    LCD::print(" OK XX");
-    LCD::LcdCommandWrite(LCD_DisplayOnOffCtrl | LCD_DisplayOnOffCtrl_DispOn | LCD_DisplayOnOffCtrl_CursOn);
+   /* -- line 1 -- */
+   LCD::LcdCommandWrite(LCD_ClearDisplay);
+
+   /* -- line 1 -- */
+   strcpy(&buf1[0], parmLabels[parmIdx]);
+   
+   /* -- line 2 -- */
+   strcpy(&buf2[0], fmtv);
+   strcpy(&buf2[10], " OK XX");
+
+
+   /* -- write to display -- */
+   buf1[16] = 0;
+   buf2[16] = 0;
+   LCD::gotoXY(0,0);
+   LCD::print(buf1);
+
+   LCD::gotoXY(0,1);    
+   LCD::print(buf2);
+
+   /* -- turn the cursor on -- */
+   LCD::LcdCommandWrite(LCD_DisplayOnOffCtrl | LCD_DisplayOnOffCtrl_DispOn | LCD_DisplayOnOffCtrl_CursOn);
+
 #if (CFG_NICE_CURSOR)
-    //do a nice thing and put the cursor at the first non zero number
-    for(int x=9 ; x>=0 ;x--){ 
-      if(fmtv[x] != '0')
+   //do a nice thing and put the cursor at the first non zero number
+   for(int x=9 ; x>=0 ;x--) { 
+      if(fmtv[x] != '0') {
          p=x; 
-    }
+      }
+   }
 #else
-    /* cursor on 'XX' by default except for contrast */
-    (parmIdx == contrastIdx) ? p=8 : p=11;  
+   /* cursor on 'XX' by default except for contrast */
+   (parmIdx == contrastIdx) ? p=8 : p=11;  
 #endif
-  byte keyLock=1;    
+
   while(true){
 
     if(p<10)
@@ -1154,8 +1140,8 @@ void editParm(byte parmIdx){
     if(p==11)     
       LCD::gotoXY(14,1);   
 
-     if(keyLock == 0){ 
-        if(!(buttonState&lbuttonBit) && !(buttonState&rbuttonBit)){// left & right
+     if(keyLock == 0) { 
+        if(!(buttonState&lbuttonBit) && !(buttonState&rbuttonBit)) {// left & right
             if (p<10)
                p=10;
             else if (p==10) 
@@ -1217,8 +1203,9 @@ void editParm(byte parmIdx){
 }
 
 void initGuino(){ //edit all the parameters
-  for(int x = 0;x<parmsLength;x++)
+  for(int x = 0;x<parmsLength;x++) {
     editParm(x);
+  }
   save();
   holdDisplay=1;
 }  
