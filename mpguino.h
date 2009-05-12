@@ -37,17 +37,22 @@
 //Vehicle Interface Pins      
 #define InjectorOpenPin                        2      
 #define InjectorClosedPin                      3      
-#define VSSPin                                14 //analog 0      
- 
 //LCD Pins      
 #define DIPin                                  4 // register select RS      
+#define EnablePin                              5       
+#define ContrastPin                            6      
 #define DB4Pin                                 7       
 #define DB5Pin                                 8       
+#define BrightnessPin                          9      
+
 #define DB6Pin                                12       
 #define DB7Pin                                13      
-#define ContrastPin                            6      
-#define EnablePin                              5       
-#define BrightnessPin                          9      
+#define VSSPin                                14 //analog 0      
+
+
+#define lbuttonPin                            17  // Left Button, on analog 3
+#define mbuttonPin                            18  // Middle Button, on analog 4
+#define rbuttonPin                            19  // Right Button, on analog 5
 
 /* --- LCD Commands --- */
 #define LCD_ClearDisplay                    0x01
@@ -63,12 +68,9 @@
 
 #define LCD_SetCGRAM                        0x40
 #define LCD_SetDDRAM                        0x80
-  /* you can OR the memory address with each of the above */
+/* you can OR a memory address with each of the above */
  
-#define lbuttonPin                            17  // Left Button, on analog 3
-#define mbuttonPin                            18  // Middle Button, on analog 4
-#define rbuttonPin                            19  // Right Button, on analog 5
- 
+/* --- Button bitmasks --- */ 
 #define vssBit                              0x01  //  pin14 is a bitmask 1 on port C
 #define lbuttonBit                          0x08  //  pin17 is a bitmask 8 on port C
 #define mbuttonBit                          0x10  //  pin18 is a bitmask 16 on port C
@@ -86,6 +88,19 @@
 typedef void (* pFunc)(void);//type for display function pointers      
 
 
+/* --- Macros ------------------------------------------------ */
+
+#define MIN(value1, value2)\
+    (((value1) >= (value2)) ? (value2) : (value1))
+
+#define MAX(value2, value1)\
+    (((value1)>=(value2)) ? (value1) : (value2))
+
+
+/* --- Globals ----------------------------------------------- */
+
+int CLOCK;
+char spinner[5] = "|/-\\";
 
 /* --- Classes --------------------------------------------- */
 
@@ -120,13 +135,13 @@ public:
  
 //LCD prototype      
 namespace LCD{      
-  void gotoXY(byte x, byte y);      
+  void gotoXY(unsigned char x, unsigned char y);      
   void print(char * string);      
   void init();      
   void writeCGRAM(char *newchars, unsigned char numnew);
   void tickleEnable();      
   void cmdWriteSet();      
-  void LcdCommandWrite(byte value);      
-  void LcdDataWrite(byte value);
-  byte pushNibble(byte value);      
+  void LcdCommandWrite(unsigned char value);      
+  void LcdDataWrite(unsigned char value);
+  unsigned char pushNibble(unsigned char value);      
 };      
