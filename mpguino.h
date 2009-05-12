@@ -100,7 +100,15 @@ typedef void (* pFunc)(void);//type for display function pointers
 /* --- Globals ----------------------------------------------- */
 
 int CLOCK;
-char spinner[5] = "|/-\\";
+
+#if (CFG_FUELCUT_INDICATOR == 2)
+/* XXX: With the Newhaven LCD, there is no backslash (character 0x5C)...
+ * the backslash was replaced with the Yen currency symbol.  Other LCDs
+ * might have a proper backslash, so we'll leave this in... */
+char spinner[4] = {'|', '/', '-', '\\'};
+#elif (CFG_FUELCUT_INDICATOR == 3)
+char spinner[4] = {'.', 'o', 'O', 'o'};
+#endif
 
 /* --- Classes --------------------------------------------- */
 

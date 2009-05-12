@@ -426,10 +426,14 @@ void loop (void){
  if(holdDisplay==0) {
     displayFuncs[screen]();    //call the appropriate display routine      
 
-#if (CFG_FUELCUT_INDICATOR == 1)
+#if (CFG_FUELCUT_INDICATOR > 0)
     /* overwrite top left corner of LCD with a visual indication that fuel cut is happening */
     if((instant.var[Trip::injPulses] == 0) && (instant.var[Trip::vssPulses] > 0)) {
+#if (CFG_FUELCUT_INDICATOR == 1)
+       buf1[0] = '*';
+#elif ((CFG_FUELCUT_INDICATOR == 2) || (CFG_FUELCUT_INDICATOR == 3))
        buf1[0] = spinner[CLOCK & 0x03];
+#endif
     }
 #endif
 
