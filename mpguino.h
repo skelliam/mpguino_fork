@@ -87,7 +87,6 @@
 
 typedef void (* pFunc)(void);//type for display function pointers      
 
-
 /* --- Macros ------------------------------------------------ */
 
 #define MIN(value1, value2)\
@@ -96,18 +95,20 @@ typedef void (* pFunc)(void);//type for display function pointers
 #define MAX(value2, value1)\
     (((value1)>=(value2)) ? (value1) : (value2))
 
-
 /* --- Globals ----------------------------------------------- */
 
 int CLOCK;
 
-#if (CFG_FUELCUT_INDICATOR == 2)
-/* XXX: With the Newhaven LCD, there is no backslash (character 0x5C)...
- * the backslash was replaced with the Yen currency symbol.  Other LCDs
- * might have a proper backslash, so we'll leave this in... */
-char spinner[4] = {'|', '/', '-', '\\'};
-#elif (CFG_FUELCUT_INDICATOR == 3)
-char spinner[4] = {'.', 'o', 'O', 'o'};
+#if (CFG_FUELCUT_INDICATOR != 0)
+unsigned char fcut_pos;
+  #if (CFG_FUELCUT_INDICATOR == 2)
+  /* XXX: With the Newhaven LCD, there is no backslash (character 0x5C)...
+   * the backslash was replaced with the Yen currency symbol.  Other LCDs
+   * might have a proper backslash, so we'll leave this in... */
+  char spinner[4] = {'|', '/', '-', '\\'};
+  #elif (CFG_FUELCUT_INDICATOR == 3)
+  char spinner[4] = {'O', 'o', '.', '.'};
+  #endif
 #endif
 
 /* --- Classes --------------------------------------------- */

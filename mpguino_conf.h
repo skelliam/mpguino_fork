@@ -4,8 +4,8 @@
 // 0=Off 1=On
 #define CFG_BIGFONT_TYPE                       2  
 // 1=Default 2=Modified (+24 bytes)
-#define CFG_FUELCUT_INDICATOR                  3  
-// 0=Off 1=star (+54) 2=spinner 3=bubble (+74)
+#define CFG_FUELCUT_INDICATOR                  1  
+// 0=Off 1=char (+54) 2=spinner 3=bubble (+74)
 #define CFG_NICE_CURSOR                        0  
 // 0=Off 1=On (+52)
 #define CFG_SERIAL_TX                          0  
