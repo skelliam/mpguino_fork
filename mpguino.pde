@@ -6,7 +6,6 @@
 #include <EEPROM.h>
 #include "mpguino.h"
 
-#define LcdCharHeightPix  8
 #define bufsize          17
 /* --- Global Variable Declarations -------------------------- */
 
@@ -41,6 +40,11 @@ static unsigned long tmp3[2];
     B00000, B00000, B00000, B11111, B01110, B11111, B11111, B11111,
     B00000, B11111, B11111, B01111, B01110, B11110, B11111, B11111,
     B00000, B11111, B11111, B00111, B01110, B11100, B11111, B11111};
+#endif
+
+#if (BARGRAPH_DISPLAY_CFG == 100)
+  static char barchars[] PROGMEM = {
+  }
 #endif
 
 #if (CFG_BIGFONT_TYPE == 1)
@@ -659,125 +663,6 @@ void tDisplay( void * r){ //display trip functions.
    strcpy(&buf2[10], format(t->gallons()));
 }      
     
-//x=0..16, y= 0..1      
-void LCD::gotoXY(unsigned char x, unsigned char y){      
-  unsigned char dr=x+0x80;
-  switch (y) {
-     case 1:
-       dr += 0x40;      
-       break;
-     case 2:
-       dr += 0x14;      
-       break;
-     case 3:
-       dr += 0x54;      
-       break;
-  }
-  LCD::LcdCommandWrite(dr);        
-}      
- 
-void LCD::print(char * string){      
-  unsigned char x = 0;      
-  char c = string[x];      
-  while(c != 0){      
-    LCD::LcdDataWrite(c);       
-    x++;      
-    c = string[x];      
-  }      
-}      
- 
- 
-void LCD::init(){
-  delay2(16);                    // wait for more than 15 msec
-  pushNibble(B00110000);  // send (B0011) to DB7-4
-  cmdWriteSet();
-  tickleEnable();
-  delay2(5);                     // wait for more than 4.1 msec
-  pushNibble(B00110000);  // send (B0011) to DB7-4
-  cmdWriteSet();
-  tickleEnable();
-  delay2(1);                     // wait for more than 100 usec
-  pushNibble(B00110000);  // send (B0011) to DB7-4
-  cmdWriteSet();
-  tickleEnable();
-  delay2(1);                     // wait for more than 100 usec
-  pushNibble(B00100000);  // send (B0010) to DB7-4 for 4bit
-  cmdWriteSet();
-  tickleEnable();
-  delay2(1);                     // wait for more than 100 usec
-
-  // ready to use normal LcdCommandWrite() function now!
-  LcdCommandWrite(B00101000);   // 4-bit interface, 2 display lines, 5x8 font
-  LcdCommandWrite(LCD_DisplayOnOffCtrl | LCD_DisplayOnOffCtrl_DispOn);
-  LcdCommandWrite(LCD_EntryMode | LCD_EntryMode_Increment);
-
-//creating the custom fonts:
-  LcdCommandWrite(LCD_SetCGRAM | 0x08);  // write to CGen RAM
-
-
-
-  writeCGRAM(&chars[0], LcdNewChars);
-
-  LcdCommandWrite(LCD_ClearDisplay);       // clear display, set cursor position to zero
-  LcdCommandWrite(LCD_SetDDRAM);           // set dram to zero
-}
-
-void  LCD::writeCGRAM(char *newchars, unsigned char numnew) {
-   unsigned char x, y;
-   /* write the character data to the character generator ram */
-   for(x=0; x<numnew; x++) {
-      for(y=0; y<LcdCharHeightPix; y++) {
-         LcdDataWrite(pgm_read_byte(&newchars[y*LcdNewChars+x])); 
-      }
-   }
-}
-
-void  LCD::tickleEnable(){       
-  // send a pulse to enable       
-  digitalWrite(EnablePin,HIGH);       
-  delayMicroseconds2(1);  // pause 1 ms according to datasheet       
-  digitalWrite(EnablePin,LOW);       
-  delayMicroseconds2(1);  // pause 1 ms according to datasheet       
-}        
- 
-void LCD::cmdWriteSet(){       
-  digitalWrite(EnablePin,LOW);       
-  delayMicroseconds2(1);  // pause 1 ms according to datasheet       
-  digitalWrite(DIPin,0);       
-}       
- 
-unsigned char LCD::pushNibble(unsigned char value){       
-  digitalWrite(DB7Pin, value & 128);       
-  value <<= 1;       
-  digitalWrite(DB6Pin, value & 128);       
-  value <<= 1;       
-  digitalWrite(DB5Pin, value & 128);       
-  value <<= 1;       
-  digitalWrite(DB4Pin, value & 128);       
-  value <<= 1;       
-  return value;      
-}      
- 
-void LCD::LcdCommandWrite(unsigned char value){       
-  value=pushNibble(value);      
-  cmdWriteSet();       
-  tickleEnable();       
-  value=pushNibble(value);      
-  cmdWriteSet();       
-  tickleEnable();       
-  delay2(5);       
-}       
- 
-void LCD::LcdDataWrite(unsigned char value){       
-  digitalWrite(DIPin, HIGH);       
-  value=pushNibble(value);      
-  tickleEnable();       
-  value=pushNibble(value);      
-  tickleEnable();       
-  delay2(5);
-}       
- 
- 
  
 // this function will return the number of bytes currently free in RAM      
 extern int  __bss_end; 
@@ -790,7 +675,6 @@ int memoryTest(){
     free_memory = ((int)&free_memory) - ((int)__brkval); 
   return free_memory; 
 } 
- 
  
 Trip::Trip(){      
 }      
@@ -1019,112 +903,6 @@ void bigNum (unsigned long t, char * txt1, char * txt2){
   #endif
   
 }      
-
-
-
-//the standard 64 bit math brings in  5000+ bytes 
-//these bring in 1214 bytes, and everything is pass by reference
-unsigned long zero64[]={0,0};
- 
-void init64(unsigned long  an[], unsigned long bigPart, unsigned long littlePart ){
-  an[0]=bigPart;
-  an[1]=littlePart;
-}
- 
-//left shift 64 bit "number"
-void shl64(unsigned long  an[]){
- an[0] <<= 1; 
- if(an[1] & 0x80000000)
-   an[0]++; 
- an[1] <<= 1; 
-}
- 
-//right shift 64 bit "number"
-void shr64(unsigned long  an[]){
- an[1] >>= 1; 
- if(an[0] & 0x1)
-   an[1]+=0x80000000; 
- an[0] >>= 1; 
-}
- 
-//add ann to an
-void add64(unsigned long  an[], unsigned long  ann[]){
-  an[0]+=ann[0];
-  if(an[1] + ann[1] < ann[1])
-    an[0]++;
-  an[1]+=ann[1];
-}
- 
-//subtract ann from an
-void sub64(unsigned long  an[], unsigned long  ann[]){
-  an[0]-=ann[0];
-  if(an[1] < ann[1]){
-    an[0]--;
-  }
-  an[1]-= ann[1];
-}
- 
-//true if an == ann
-boolean eq64(unsigned long  an[], unsigned long  ann[]){
-  return (an[0]==ann[0]) && (an[1]==ann[1]);
-}
- 
-//true if an < ann
-boolean lt64(unsigned long  an[], unsigned long  ann[]){
-  if(an[0]>ann[0]) return false;
-  return (an[0]<ann[0]) || (an[1]<ann[1]);
-}
- 
-//divide num by den
-void div64(unsigned long num[], unsigned long den[]){
-  unsigned long quot[2];
-  unsigned long qbit[2];
-  unsigned long tmp[2];
-  init64(quot,0,0);
-  init64(qbit,0,1);
- 
-  if (eq64(num, zero64)) {  //numerator 0, call it 0
-    init64(num,0,0);
-    return;        
-  }
- 
-  if (eq64(den, zero64)) { //numerator not zero, denominator 0, infinity in my book.
-    init64(num,0xffffffff,0xffffffff);
-    return;        
-  }
- 
-  init64(tmp,0x80000000,0);
-  while(lt64(den,tmp)){
-    shl64(den);
-    shl64(qbit);
-  } 
- 
-  while(!eq64(qbit,zero64)){
-    if(lt64(den,num) || eq64(den,num)){
-      sub64(num,den);
-      add64(quot,qbit);
-    }
-    shr64(den);
-    shr64(qbit);
-  }
- 
-  //remainder now in num, but using it to return quotient for now  
-  init64(num,quot[0],quot[1]); 
-}
- 
- 
-//multiply num by den
-void mul64(unsigned long an[], unsigned long ann[]){
-  unsigned long p[2] = {0,0};
-  unsigned long y[2] = {ann[0], ann[1]};
-  while(!eq64(y,zero64)) {
-    if(y[1] & 1) 
-      add64(p,an);
-    shl64(an);
-    shr64(y);
-  }
-  init64(an,p[0],p[1]);
-} 
   
 void save(){
   EEPROM.write(0,guinosig);
