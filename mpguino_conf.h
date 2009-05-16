@@ -1,6 +1,6 @@
 /* --- Compile-time options ---------------------------------- */
 
-#define BARGRAPH_DISPLAY_CFG                   0  
+#define BARGRAPH_DISPLAY_CFG                   1  
 // 0=Off 1=On
 #define CFG_BIGFONT_TYPE                       2  
 // 1=Default 2=Modified (+24 bytes)

@@ -2,7 +2,7 @@
 //it won't fit with the new math libraries that come with 0012, sorry.
 //GPL Software    
 
-#include <avr/pgmspace.h>  
+
 #include <EEPROM.h>
 #include "mpguino.h"
 
@@ -10,32 +10,6 @@
 #define bufsize          17
 /* --- Global Variable Declarations -------------------------- */
 
-/* default values */
-unsigned long parms[]={
-   95ul,
-   8208ul,
-   500000000ul,
-   3ul,
-   420000000ul,
-   10300ul,
-   500ul,
-   2400ul,
-   0ul,
-   2ul
-};
-
-char *parmLabels[]={
-   "Contrast",
-   "VSS Pulses/Mile", 
-   "MicroSec/Gallon",
-   "Pulses/2 revs",
-   "Timout(microSec)",
-   "Tank Gal * 1000",
-   "Injector DelayuS",
-   "Weight (lbs)",
-   "Scratchpad(odo?)",
-   "VSS Delay ms"
-};
 
 unsigned long maxLoopLength = 0;            // see if we are overutilizing the CPU      
 static char buf1[bufsize];
@@ -262,6 +236,9 @@ pFunc displayFuncs[] ={
   doDisplayTankTripData, 
   doDisplayEOCIdleData, 
   doDisplaySystemInfo,
+#if (BARGRAPH_DISPLAY_CFG == 1)
+  doDisplayBigPeriodic,
+#endif
 };      
 
 #define displayFuncSize (sizeof(displayFuncs)/sizeof(pFunc)) //array size      
@@ -283,6 +260,9 @@ void setup (void) {
    displayFuncNames[x++]=  PSTR("Tank "); 
    displayFuncNames[x++]=  PSTR("EOC mi/Idle gal "); 
    displayFuncNames[x++]=  PSTR("CPU Monitor ");      
+#if (BARGRAPH_DISPLAY_CFG == 1)
+   displayFuncNames[x++]=  PSTR("BIG Periodic ");
+#endif
 
    pinMode(BrightnessPin,OUTPUT);      
    analogWrite(BrightnessPin,brightness[brightnessIdx]);      
@@ -382,7 +362,11 @@ void loop (void){
     current.update(instant);   //use instant to update current      
     tank.update(instant);      //use instant to update tank
 #if (BARGRAPH_DISPLAY_CFG == 1)
-    periodic.update(instant);   
+    periodic.update(instant);  //use instant to update periodic 
+    /* reset periodic every 2 minutes */
+    if (periodic.var[Trip::loopCount] >= 240) {
+       periodic.reset();
+    }
 #endif
 
 //currentTripResetTimeoutUS
@@ -495,7 +479,7 @@ void loop (void){
 
    while (elapsedMicroseconds(loopStart) < (looptime)) {
       //wait for the end of a second to arrive
-      0;
+      continue;
    }
 
    CLOCK++;
@@ -586,6 +570,12 @@ void doDisplayBigCurrent() {
 void doDisplayBigTank()    {
    bigNum(tank.mpg(),"TANK","MPG ");
 }      
+
+#if (BARGRAPH_DISPLAY_CFG == 1)
+void doDisplayBigPeriodic() {
+   bigNum(periodic.mpg(), "PERI", "MPG ");
+}
+#endif
  
 void doDisplayCurrentTripData(void) {
    /* display current trip formatted data */
@@ -610,14 +600,14 @@ void doDisplaySystemInfo(void) {
    strcpy(&buf2[10], format(mem));
 }    
 
-#if (BARGRAPH_DISPLAY_CFG == 1)
+#if (BARGRAPH_DISPLAY_CFG == 100)
 void doDisplayBarGraph(void) {
-   char temp = 0;
+   unsigned char temp = 0;
    unsigned char i = 0;
 
    /* need to get a running total of periodic mileage */
    /* val is the mileage scaled from 0-16 */
-   /* where 16 is the user configurable max */
+   /* where 16 represents the user configurable max econ */
 
    for (i=0; i<9; i++) {
       /* line 1 bar */
@@ -951,24 +941,23 @@ unsigned long  Trip::mpg(){
  
 //return the seconds as a time mmm.ss, eventually hhh:mm too      
 unsigned long Trip::time(){      
-//  return seconds*1000;      
-  unsigned char d = 60;      
-  unsigned long seconds = var[Trip::loopCount]/loopsPerSecond;     
-//  if(seconds/60 > 999) d = 3600; //scale up to hours.minutes if we get past 999 minutes      
-  return ((seconds/d)*1000) + ((seconds%d) * 10);       
+   //  return seconds*1000;      
+   unsigned char d = 60;      
+   unsigned long seconds = var[Trip::loopCount]/loopsPerSecond;     
+   return ((seconds/d)*1000) + ((seconds%d) * 10);       
 }      
  
  
 void Trip::reset(){      
-  var[Trip::loopCount]=0;      
-  var[Trip::injPulses]=0;      
-  var[Trip::injHius]=0;      
-  var[Trip::injHiSec]=0;      
-  var[Trip::vssPulses]=0;  
-  var[Trip::vssPulseLength]=0;
-  var[Trip::injIdleHiSec]=0;
-  var[Trip::injIdleHius]=0;
-  var[Trip::vssEOCPulses]=0;
+   var[Trip::loopCount]=0;      
+   var[Trip::injPulses]=0;      
+   var[Trip::injHius]=0;      
+   var[Trip::injHiSec]=0;      
+   var[Trip::vssPulses]=0;  
+   var[Trip::vssPulseLength]=0;
+   var[Trip::injIdleHiSec]=0;
+   var[Trip::injIdleHius]=0;
+   var[Trip::vssEOCPulses]=0;
 }      
  
 void Trip::update(Trip t){     

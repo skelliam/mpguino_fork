@@ -1,3 +1,4 @@
+#include <avr/pgmspace.h>  
 #include "mpguino_conf.h"
 
 /* --- Constants --------------------------------------------- */
@@ -111,6 +112,33 @@ unsigned char fcut_pos;
   #endif
 #endif
 
+/* default values */
+unsigned long parms[]={
+   95ul,
+   8208ul,
+   500000000ul,
+   3ul,
+   420000000ul,
+   10300ul,
+   500ul,
+   2400ul,
+   0ul,
+   2ul
+};
+
+char *parmLabels[]={
+   "Contrast",
+   "VSS Pulses/Mile", 
+   "MicroSec/Gallon",
+   "Pulses/2 revs",
+   "Timout(microSec)",
+   "Tank Gal * 1000",
+   "Injector DelayuS",
+   "Weight (lbs)",
+   "Scratchpad(odo?)",
+   "VSS Delay ms"
+};
+
 /* --- Classes --------------------------------------------- */
 
 class Trip{      
@@ -119,23 +147,24 @@ public:
                  injIdleHius, vssPulses, vssEOCPulses, vssPulseLength};
   unsigned long var[9];
   /* ----
-  unsigned long loopCount; //how long has this trip been running      
-  unsigned long injPulses; //rpm      
-  unsigned long injHiSec;// seconds the injector has been open      
-  unsigned long injHius;// microseconds, fractional part of the injectors open       
-  unsigned long injIdleHiSec;// seconds the injector has been open      
-  unsigned long injIdleHius;// microseconds, fractional part of the injectors open       
-  unsigned long vssPulses;//from the speedo      
-  unsigned long vssEOCPulses;//from the speedo      
-  unsigned long vssPulseLength; // only used by instant
+     loopCount      -- how long has this trip been running      
+     injPulses      -- rpm      
+     injHiSec       -- seconds the injector has been open      
+     injHius        -- microseconds, fractional part of the injectors open
+     injIdleHiSec   -- seconds the injector has been open
+     injIdleHius    -- microseconds, fractional part of the injectors open
+     vssPulses      -- from the speedo
+     vssEOCPulses   -- from the speedo
+     vssPulseLength -- only used by instant
   ---- */
+
   //these functions actually return in thousandths,       
   unsigned long miles();        
   unsigned long gallons();      
   unsigned long mpg();        
   unsigned long mph();        
-  unsigned long time(); //mmm.ss        
-  unsigned long eocMiles();  //how many "free" miles?        
+  unsigned long time();         //mmm.ss        
+  unsigned long eocMiles();     //how many "free" miles?        
   unsigned long idleGallons();  //how many gallons spent at 0 mph?        
   void update(Trip t);      
   void reset();      
