@@ -51,26 +51,24 @@ void LCD::init(){
   LcdCommandWrite(B00101000);   // 4-bit interface, 2 display lines, 5x8 font
   LcdCommandWrite(LCD_DisplayOnOffCtrl | LCD_DisplayOnOffCtrl_DispOn);
   LcdCommandWrite(LCD_EntryMode | LCD_EntryMode_Increment);
-
-//creating the custom fonts:
-  LcdCommandWrite(LCD_SetCGRAM | 0x08);  // write to CGen RAM
-
-
-
-  writeCGRAM(&chars[0], LcdNewChars);
-
   LcdCommandWrite(LCD_ClearDisplay);       // clear display, set cursor position to zero
   LcdCommandWrite(LCD_SetDDRAM);           // set dram to zero
 }
 
 void  LCD::writeCGRAM(char *newchars, unsigned char numnew) {
    unsigned char x, y;
+   LcdCommandWrite(LCD_EntryMode | LCD_EntryMode_Increment);
+   LcdCommandWrite(LCD_SetCGRAM | 0x08);  // write to CGen RAM
+
    /* write the character data to the character generator ram */
    for(x=0; x<numnew; x++) {
       for(y=0; y<LcdCharHeightPix; y++) {
-         LcdDataWrite(pgm_read_byte(&newchars[y*LcdNewChars+x])); 
+         LcdDataWrite(pgm_read_byte(&newchars[y*numnew+x])); 
       }
    }
+
+   LcdCommandWrite(LCD_ClearDisplay);       // clear display, set cursor position to zero
+   LcdCommandWrite(LCD_SetDDRAM);           // set dram to zero
 }
 
 void  LCD::tickleEnable(){       

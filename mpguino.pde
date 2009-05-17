@@ -20,14 +20,14 @@ static unsigned long tmp3[2];
 
 #if (CFG_BIGFONT_TYPE == 1)
   static char chars[] PROGMEM = {
-    B11111,B00000,B11111,B11111,B00000,
-    B11111,B00000,B11111,B11111,B00000,
-    B11111,B00000,B11111,B11111,B00000,
-    B00000,B00000,B00000,B11111,B00000,
-    B00000,B00000,B00000,B11111,B00000,
-    B00000,B11111,B11111,B11111,B01110,
-    B00000,B11111,B11111,B11111,B01110,
-    B00000,B11111,B11111,B11111,B01110};
+    B11111, B00000, B11111, B11111, B00000,
+    B11111, B00000, B11111, B11111, B00000,
+    B11111, B00000, B11111, B11111, B00000,
+    B00000, B00000, B00000, B11111, B00000,
+    B00000, B00000, B00000, B11111, B00000,
+    B00000, B11111, B11111, B11111, B01110,
+    B00000, B11111, B11111, B11111, B01110,
+    B00000, B11111, B11111, B11111, B01110};
 #elif (CFG_BIGFONT_TYPE == 2)
   /* XXX: For whatever reason I can not figure out how 
    * to store more than 8 chars in the LCD CGRAM */
@@ -42,15 +42,29 @@ static unsigned long tmp3[2];
     B00000, B11111, B11111, B00111, B01110, B11100, B11111, B11111};
 #endif
 
-#if (BARGRAPH_DISPLAY_CFG == 100)
+#if (BARGRAPH_DISPLAY_CFG == 1)
+  const unsigned char LcdBarChars = 7;
   static char barchars[] PROGMEM = {
-  }
+    B00000, B00000, B00000, B00000, B00000, B00000, B00000, 
+    B00000, B00000, B00000, B00000, B00000, B00000, B11111, 
+    B00000, B00000, B00000, B00000, B00000, B11111, B11111, 
+    B00000, B00000, B00000, B00000, B11111, B11111, B11111, 
+    B00000, B00000, B00000, B11111, B11111, B11111, B11111, 
+    B00000, B00000, B11111, B11111, B11111, B11111, B11111, 
+    B00000, B11111, B11111, B11111, B11111, B11111, B11111, 
+    B11111, B11111, B11111, B11111, B11111, B11111, B11111};
+
+  /* map numbers to bar segments.  Example:
+   * ascii_barmap[10] --> all eight segments filled in
+   * ascii_barmap[4]  --> four segments filled in */
+  char ascii_barmap[] = {0x20, 0x01, 0x02, 0x03, 0x04, 0x05, 
+                         0x06, 0x07, 0xFF, 0xFF, 0xFF}; 
 #endif
 
 #if (CFG_BIGFONT_TYPE == 1)
    //32 = 0x20 = space
    const unsigned char LcdNewChars = 5;
-   char bignumchars1[]={4,1,4,0, 1,4,32,0, 3,3,4,0, 1,3,4,0, 4,2,4,0,   
+   char bignumchars1[]={4,1,4,0, 1,4,32,0, 3,3,4,0, 1,3,4,0, 4,2,4,0, 
                         4,3,3,0,  4,3,3,0, 1,1,4,0, 4,3,4,0, 4,3,4,0}; 
    char bignumchars2[]={4,2,4,0, 2,4,2,0,   4,2,2,0, 2,2,4,0, 32,32,4,0, 
                         2,2,4,0, 4,2,4,0, 32,4,32,0, 4,2,4,0,   2,2,4,0};  
@@ -242,6 +256,7 @@ pFunc displayFuncs[] ={
   doDisplaySystemInfo,
 #if (BARGRAPH_DISPLAY_CFG == 1)
   doDisplayBigPeriodic,
+  doDisplayBarGraph,
 #endif
 };      
 
@@ -266,6 +281,7 @@ void setup (void) {
    displayFuncNames[x++]=  PSTR("CPU Monitor ");      
 #if (BARGRAPH_DISPLAY_CFG == 1)
    displayFuncNames[x++]=  PSTR("BIG Periodic ");
+   displayFuncNames[x++]=  PSTR("Bargraph ");
 #endif
 
    pinMode(BrightnessPin,OUTPUT);      
@@ -604,24 +620,58 @@ void doDisplaySystemInfo(void) {
    strcpy(&buf2[10], format(mem));
 }    
 
-#if (BARGRAPH_DISPLAY_CFG == 100)
+#if (BARGRAPH_DISPLAY_CFG == 1)
 void doDisplayBarGraph(void) {
-   unsigned char temp = 0;
+   signed char temp = 0;
    unsigned char i = 0;
+   unsigned long thismpg = periodic.mpg();
+   /* TODO: make configurable */
+   unsigned long limit = 40000ul;  /* 40 mpg */
 
-   /* need to get a running total of periodic mileage */
-   /* val is the mileage scaled from 0-16 */
-   /* where 16 represents the user configurable max econ */
-
-   for (i=0; i<9; i++) {
-      /* line 1 bar */
-      temp = MAX(val-8, 0);
-      buf1[i] = ascii_barmap[temp];
-
-      /* line 2 bar */
-      temp = MIN(val, 8);
-      buf2[i] = ascii_barmap[temp];
+   /* Load the bargraph characters if necessary */
+   if (DISPLAY_TYPE != dtBarGraph) {
+      LCD::writeCGRAM(&barchars[0], LcdBarChars);
+      DISPLAY_TYPE = dtBarGraph;
    }
+
+   /* impose limit on number */
+   thismpg = MIN(thismpg, limit);
+
+   /* scale to 0-160 */
+   thismpg = (thismpg * 160)/limit;
+
+   /* round up */
+   if ((thismpg % 10) > 4)
+      thismpg += 10;
+
+   /* finally put to a scale of 0-16 */
+   thismpg /= 10;
+   thismpg = MIN(thismpg, 16);
+
+   /* line 1 graph */
+   temp = MAX((signed char)thismpg-8, 0);  /* can't be negative */
+   temp = MIN(temp, 10);      /* no more than 10 */
+   buf1[0] = ascii_barmap[temp];
+   buf1[1] = 0x20;
+   buf1[2] = temp + '0';
+
+   /* line 2 bar */
+   temp = MIN(thismpg, 8);
+   buf2[0] = ascii_barmap[temp];
+   buf2[1] = 0x20;
+   buf2[2] = temp + '0';
+
+   /* current mpg */
+   buf1[9] = 'C';
+   strcpy(&buf1[10], format(current.mpg()));
+
+   /* periodic mpg */
+   buf2[9] = 'P';
+   strcpy(&buf2[10], format(periodic.mpg()));
+
+   #if (CFG_FUELCUT_INDICATOR != 0)
+   fcut_pos = 8;
+   #endif
 }
 #endif
  
@@ -874,6 +924,10 @@ void Trip::update(Trip t){
 void bigNum (unsigned long t, char * txt1, char * txt2){      
   char dp = ' ';       // decimal point is a space
   char *r = "009.99";  // default to 999
+  if (DISPLAY_TYPE != dtBigChars) {
+     LCD::writeCGRAM(&chars[0], LcdNewChars);
+     DISPLAY_TYPE = dtBigChars;
+  }
   if(t<=99500){ 
      r=format(t/10);   // 009.86 
      dp=5;             // special character 5

@@ -83,7 +83,6 @@
 // how many times will we try and loop in a second     
 #define loopsPerSecond                         2   
 
-
 /* --- Typedefs ---------------------------------------------- */
 
 typedef void (* pFunc)(void);//type for display function pointers      
@@ -99,6 +98,8 @@ typedef void (* pFunc)(void);//type for display function pointers
 /* --- Globals ----------------------------------------------- */
 
 int CLOCK;
+unsigned char DISPLAY_TYPE;
+enum displayTypes {dtText=0, dtBigChars, dtBarGraph};
 
 #if (CFG_FUELCUT_INDICATOR != 0)
 unsigned char fcut_pos;
