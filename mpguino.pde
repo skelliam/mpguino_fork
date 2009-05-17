@@ -265,10 +265,15 @@ prog_char  * displayFuncNames[displayFuncSize];
 unsigned char newRun = 0;
 
 void setup (void) {
+   unsigned char x = 0;
+
    CLOCK = 0;
+   SCREEN = 0;
+   HOLD_DISPLAY = 0;
+
    init2();
    newRun = load();//load the default parameters
-   unsigned char x = 0;
+
    displayFuncNames[x++]=  PSTR("Custom  "); 
    displayFuncNames[x++]=  PSTR("Instant/Current "); 
    displayFuncNames[x++]=  PSTR("Instant/Tank "); 
@@ -329,8 +334,7 @@ void setup (void) {
    delay2(1500);       
 }       
  
-unsigned char screen=0;      
-unsigned char holdDisplay = 0; 
+
 
 
 
@@ -339,6 +343,7 @@ void loop (void){
   unsigned long lastActivity =microSeconds();
   unsigned long tankHold;      //state at point of last activity
   unsigned long loopStart;
+  unsigned long temp;          //scratch variable
 
   if(newRun !=1) {
     initGuino();//go through the initialization screen
@@ -381,16 +386,20 @@ void loop (void){
     
     current.update(instant);   //use instant to update current      
     tank.update(instant);      //use instant to update tank
+
 #if (BARGRAPH_DISPLAY_CFG == 1)
     periodic.update(instant);  //use instant to update periodic 
     /* reset periodic every 2 minutes */
     if (periodic.var[Trip::loopCount] >= 240) {
-       periodic.reset();
+       temp = MIN((periodic.mpg()/10), 0xFFFF);
+       /* add temp into first element and shift items in array */
+       insert((int*)PERIODIC_HIST, (unsigned short)temp, length(PERIODIC_HIST), 0);
+       periodic.reset();   /* reset */
     }
 #endif
 
 //currentTripResetTimeoutUS
-    if(instant.var[Trip::vssPulses] == 0 && instant.var[Trip::injPulses] == 0 && holdDisplay==0){
+    if(instant.var[Trip::vssPulses] == 0 && instant.var[Trip::injPulses] == 0 && HOLD_DISPLAY==0){
       if(elapsedMicroseconds(lastActivity) > parms[currentTripResetTimeoutUSIdx] && lastActivity != nil){
 #if (TANK_IN_EEPROM_CFG)
         writeEepBlock32(eepBlkAddr_Tank, &tank.var[0], eepBlkSize_Tank);
@@ -430,8 +439,8 @@ void loop (void){
     }
     
 
- if(holdDisplay==0) {
-    displayFuncs[screen]();    //call the appropriate display routine      
+ if(HOLD_DISPLAY==0) {
+    displayFuncs[SCREEN]();    //call the appropriate display routine      
 
 #if (CFG_FUELCUT_INDICATOR != 0)
     /* insert visual indication that fuel cut is happening */
@@ -471,11 +480,11 @@ void loop (void){
           current.reset();      
           LCD::print(getStr(PSTR("Current Reset ")));      
       }else if(!(buttonState&lbuttonBit)){ //left is rotate through screeens to the left      
-        if(screen!=0)      
-          screen=(screen-1);       
+        if(SCREEN!=0)      
+          SCREEN=(SCREEN-1);       
         else      
-          screen=displayFuncSize-1;      
-        LCD::print(getStr(displayFuncNames[screen]));      
+          SCREEN=displayFuncSize-1;      
+        LCD::print(getStr(displayFuncNames[SCREEN]));      
       }else if(!(buttonState&mbuttonBit)){ //middle is cycle through brightness settings      
         brightnessIdx = (brightnessIdx + 1) % brightnessLength;      
         analogWrite(BrightnessPin,brightness[brightnessIdx]);      
@@ -483,14 +492,14 @@ void loop (void){
         LCD::LcdDataWrite('0' + brightnessIdx);      
         LCD::print(" ");      
       }else if(!(buttonState&rbuttonBit)){//right is rotate through screeens to the left      
-        screen=(screen+1)%displayFuncSize;      
-        LCD::print(getStr(displayFuncNames[screen]));      
+        SCREEN=(SCREEN+1)%displayFuncSize;      
+        LCD::print(getStr(displayFuncNames[SCREEN]));      
       }      
       if(buttonState!=buttonsUp)
-         holdDisplay=1;
+         HOLD_DISPLAY=1;
      }
      else {
-        holdDisplay=0;
+        HOLD_DISPLAY=0;
      } 
     buttonState=buttonsUp;//reset the buttons      
  
@@ -624,9 +633,8 @@ void doDisplaySystemInfo(void) {
 void doDisplayBarGraph(void) {
    signed char temp = 0;
    unsigned char i = 0;
-   unsigned long thismpg = periodic.mpg();
-   /* TODO: make configurable */
-   unsigned long limit = 40000ul;  /* 40 mpg */
+   unsigned char j = 0;
+   unsigned short stemp = 0;
 
    /* Load the bargraph characters if necessary */
    if (DISPLAY_TYPE != dtBarGraph) {
@@ -634,38 +642,29 @@ void doDisplayBarGraph(void) {
       DISPLAY_TYPE = dtBarGraph;
    }
 
-   /* impose limit on number */
-   thismpg = MIN(thismpg, limit);
-
-   /* scale to 0-160 */
-   thismpg = (thismpg * 160)/limit;
-
-   /* round up */
-   if ((thismpg % 10) > 4)
-      thismpg += 10;
-
-   /* finally put to a scale of 0-16 */
-   thismpg /= 10;
-   thismpg = MIN(thismpg, 16);
-
-   /* line 1 graph */
-   temp = MAX((signed char)thismpg-8, 0);  /* can't be negative */
-   temp = MIN(temp, 10);      /* no more than 10 */
-   buf1[0] = ascii_barmap[temp];
-   buf1[1] = 0x20;
-   buf1[2] = temp + '0';
-
-   /* line 2 bar */
-   temp = MIN(thismpg, 8);
-   buf2[0] = ascii_barmap[temp];
-   buf2[1] = 0x20;
-   buf2[2] = temp + '0';
+   for(i=8; i>0; i--) {
+      /* limit size -- print oldest first */
+      stemp = MIN(PERIODIC_HIST[i-1], BAR_LIMIT)/10;
+      /* round up if necessary */
+      if ((stemp % 10) > 4)
+         stemp += 10;
+      /* convert to a number from 0-16 */
+      temp = (signed char)((stemp * 16) / (BAR_LIMIT/10));
+      temp = MIN(temp, 16);  /* should not be necessary... */
+      /* line 1 graph */
+      buf1[j] = ascii_barmap[MAX(temp-8,0)];
+      /* line 2 graph */
+      buf2[j] = ascii_barmap[MIN(temp,8)];
+      j++;
+   }
 
    /* current mpg */
+   buf1[8] = ' ';
    buf1[9] = 'C';
    strcpy(&buf1[10], format(current.mpg()));
 
    /* periodic mpg */
+   buf2[8] = ' ';
    buf2[9] = 'P';
    strcpy(&buf2[10], format(periodic.mpg()));
 
@@ -957,11 +956,28 @@ void bigNum (unsigned long t, char * txt1, char * txt2){
   #endif
   
 }      
+
+int insert(int *array, int val, size_t size, size_t at)
+{
+  size_t i;
+
+  /* In range? */
+  if (at >= size)
+    return -1;
+
+  /* Shift elements to make a hole */
+  for (i = size - 1; i > at; i--)
+    array[i] = array[i - 1];
+  /* Insertion! */
+  array[at] = val;
+
+  return 0;
+}
   
 void save(){
   EEPROM.write(0,guinosig);
-  EEPROM.write(1,parmsLength);
-  writeEepBlock32(0x04, &parms[0], parmsLength);
+  EEPROM.write(1,length(parms));
+  writeEepBlock32(0x04, &parms[0], length(parms));
 }
 
 void writeEepBlock32(unsigned int start_addr, unsigned long *val, unsigned int size) {
@@ -1003,7 +1019,7 @@ unsigned char load(){ //return 1 if loaded ok
     c=9; //before fancy parameter counter
 
   if(b == guinosig || b == guinosigold){
-    readEepBlock32(0x04, &parms[0], parmsLength);
+    readEepBlock32(0x04, &parms[0], length(parms));
     #if (TANK_IN_EEPROM_CFG == 1)
     /* read out the tank variables on boot */
     /* TODO:  eepBlkSize_Tank is appropriate for size? */
@@ -1144,11 +1160,11 @@ void editParm(unsigned char parmIdx){
 }
 
 void initGuino(){ //edit all the parameters
-  for(int x = 0;x<parmsLength;x++) {
+  for(int x = 0; x<length(parms); x++) {
     editParm(x);
   }
   save();
-  holdDisplay=1;
+  HOLD_DISPLAY=1;
 }  
 
 unsigned long millis2(){

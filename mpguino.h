@@ -28,7 +28,8 @@
 #define vsspause                               9
 
 //array size      
-#define parmsLength (sizeof(parms)/sizeof(unsigned long)) 
+//#define parmsLength (sizeof(parms)/sizeof(unsigned long)) 
+#define length(x) (sizeof x / sizeof *x)
 
 #define nil                         3999999999ul
  
@@ -99,6 +100,9 @@ typedef void (* pFunc)(void);//type for display function pointers
 
 int CLOCK;
 unsigned char DISPLAY_TYPE;
+unsigned char SCREEN;      
+unsigned char HOLD_DISPLAY; 
+
 enum displayTypes {dtText=0, dtBigChars, dtBarGraph};
 
 #if (CFG_FUELCUT_INDICATOR != 0)
@@ -111,6 +115,17 @@ unsigned char fcut_pos;
   #elif (CFG_FUELCUT_INDICATOR == 3)
   char spinner[4] = {'O', 'o', '.', '.'};
   #endif
+#endif
+
+#if (BARGRAPH_DISPLAY_CFG == 1)
+/* The mpg() function call in a Trip class returns an unsigned long.
+ * This value can be divided by 1000 in order to get 'true' mpg.
+ * This means that an unsigned short int will hold 0xFFFF, or 65535
+ * (65.535 MPG).  Since 65.535 is potentially realistic, I propose dropping
+ * one decimal of precision in favor of a higher maximum -- 655.35 mpg.
+ * This way we can save 20 bytes of memory. */
+unsigned short PERIODIC_HIST[10];
+unsigned short BAR_LIMIT = 4000;  /* 40 mpg */
 #endif
 
 /* default values */
