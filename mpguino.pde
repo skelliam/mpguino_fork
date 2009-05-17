@@ -970,7 +970,7 @@ void writeEepBlock32(unsigned int start_addr, unsigned long *val, unsigned int s
   int i = 0;
   for(start_addr; p < size; start_addr+=4) {
     for (i=0; i<4; i++) {
-      shift = (8 * (3-i));  /* 24, 26, 8, 0 */
+      shift = (8 * (3-i));  /* 24, 16, 8, 0 */
       EEPROM.write(start_addr + i, (val[p]>>shift) & 0xFF);
     }
     p++;

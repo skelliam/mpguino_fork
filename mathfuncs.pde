@@ -1,7 +1,6 @@
 //the standard 64 bit math brings in  5000+ bytes 
 //these bring in 1214 bytes, and everything is pass by reference
-unsigned long zero64[]={0,0};
- 
+
 void init64(unsigned long  an[], unsigned long bigPart, unsigned long littlePart ){
   an[0]=bigPart;
   an[1]=littlePart;
@@ -53,6 +52,7 @@ boolean lt64(unsigned long  an[], unsigned long  ann[]){
  
 //divide num by den
 void div64(unsigned long num[], unsigned long den[]){
+  unsigned long zero64[]={0,0};
   unsigned long quot[2];
   unsigned long qbit[2];
   unsigned long tmp[2];
@@ -93,6 +93,8 @@ void div64(unsigned long num[], unsigned long den[]){
 void mul64(unsigned long an[], unsigned long ann[]){
   unsigned long p[2] = {0,0};
   unsigned long y[2] = {ann[0], ann[1]};
+  unsigned long zero64[]={0,0};
+
   while(!eq64(y,zero64)) {
     if(y[1] & 1) 
       add64(p,an);
