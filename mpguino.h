@@ -125,7 +125,7 @@ unsigned char fcut_pos;
  * one decimal of precision in favor of a higher maximum -- 655.35 mpg.
  * This way we can save 20 bytes of memory. */
 unsigned short PERIODIC_HIST[10];
-unsigned short BAR_LIMIT = 4000;  /* 40 mpg */
+unsigned short BAR_LIMIT = 6400;  /* 64 mpg */
 #endif
 
 /* default values */
