@@ -20,6 +20,7 @@
 #define guinosigold                    B10100101 
 #define guinosig                       B11100111 
 
+
 //Vehicle Interface Pins      
 #define InjectorOpenPin                        2      
 #define InjectorClosedPin                      3      
@@ -68,6 +69,9 @@
 // how many times will we try and loop in a second     
 #define loopsPerSecond                         2   
 
+/* --- LCD line buffer size --- */
+#define bufsize                               17
+
 /* --- Enums ------------------------------------------------- */
 
 enum longparms { contrastIdx=0, 
@@ -103,6 +107,8 @@ int CLOCK;
 unsigned char DISPLAY_TYPE;
 unsigned char SCREEN;      
 unsigned char HOLD_DISPLAY; 
+static char LCDBUF1[bufsize];
+static char LCDBUF2[bufsize];
 
 #if (CFG_FUELCUT_INDICATOR != 0)
 unsigned char fcut_pos;
@@ -195,15 +201,4 @@ class Trip{
      Trip();      
 };      
  
-//LCD prototype      
-namespace LCD{      
-  void gotoXY(unsigned char x, unsigned char y);      
-  void print(char * string);      
-  void init();      
-  void writeCGRAM(char *newchars, unsigned char numnew);
-  void tickleEnable();      
-  void cmdWriteSet();      
-  void LcdCommandWrite(unsigned char value);      
-  void LcdDataWrite(unsigned char value);
-  unsigned char pushNibble(unsigned char value);      
-};      
+

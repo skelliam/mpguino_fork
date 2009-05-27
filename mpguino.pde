@@ -2,17 +2,15 @@
 //it won't fit with the new math libraries that come with 0012, sorry.
 //GPL Software    
 
-
 #include <EEPROM.h>
 #include "mpguino.h"
+#include "lcd.h"
 
-#define bufsize          17
 /* --- Global Variable Declarations -------------------------- */
 
 
 unsigned long maxLoopLength = 0;            // see if we are overutilizing the CPU      
-static char buf1[bufsize];
-static char buf2[bufsize];
+
 //for display computing
 static unsigned long tmp1[2];
 static unsigned long tmp2[2];
@@ -447,24 +445,24 @@ void loop (void){
     if(    (instant.var[Trip::injPulses] == 0) 
         && (instant.var[Trip::vssPulses] > 0) ) {
        #if (CFG_FUELCUT_INDICATOR == 1)
-       buf1[fcut_pos] = 'c';
+       LCDBUF1[fcut_pos] = 'c';
        #elif ((CFG_FUELCUT_INDICATOR == 2) || (CFG_FUELCUT_INDICATOR == 3))
-       buf1[fcut_pos] = spinner[CLOCK & 0x03];
+       LCDBUF1[fcut_pos] = spinner[CLOCK & 0x03];
        #endif
     }
 #endif
 
     /* ensure that we have terminating zeros */
-    buf1[16] = 0;
-    buf2[16] = 0;
+    LCDBUF1[16] = 0;
+    LCDBUF2[16] = 0;
 
     /* print line 1 */
     LCD::LcdCommandWrite(LCD_ReturnHome);
-    LCD::print(buf1);
+    LCD::print(LCDBUF1);
 
     /* print line 2 */
     LCD::gotoXY(0,1);
-    LCD::print(buf2);
+    LCD::print(LCDBUF2);
 
     LCD::LcdCommandWrite(LCD_ReturnHome);
 
@@ -618,15 +616,15 @@ void doDisplayTankTripData(void) {
 
 void doDisplaySystemInfo(void) {      
    /* display max cpu utilization and ram */
-   strcpy(&buf1[0], "C%");
-   strcpy(&buf1[2], format(maxLoopLength*1000/(looptime/100)));
-   strcpy(&buf1[8], " T");
-   strcpy(&buf1[10], format(tank.time()));
+   strcpy(&LCDBUF1[0], "C%");
+   strcpy(&LCDBUF1[2], format(maxLoopLength*1000/(looptime/100)));
+   strcpy(&LCDBUF1[8], " T");
+   strcpy(&LCDBUF1[10], format(tank.time()));
 
    unsigned long mem = memoryTest();      
    mem*=1000;      
-   strcpy(&buf2[0], "FREE MEM: ");
-   strcpy(&buf2[10], format(mem));
+   strcpy(&LCDBUF2[0], "FREE MEM: ");
+   strcpy(&LCDBUF2[10], format(mem));
 }    
 
 #if (BARGRAPH_DISPLAY_CFG == 1)
@@ -652,21 +650,21 @@ void doDisplayBarGraph(void) {
       temp = (signed char)((stemp * 16) / (BAR_LIMIT/10));
       temp = MIN(temp, 16);  /* should not be necessary... */
       /* line 1 graph */
-      buf1[j] = ascii_barmap[MAX(temp-8,0)];
+      LCDBUF1[j] = ascii_barmap[MAX(temp-8,0)];
       /* line 2 graph */
-      buf2[j] = ascii_barmap[MIN(temp,8)];
+      LCDBUF2[j] = ascii_barmap[MIN(temp,8)];
       j++;
    }
 
    /* current mpg */
-   buf1[8] = ' ';
-   buf1[9] = 'C';
-   strcpy(&buf1[10], format(current.mpg()));
+   LCDBUF1[8] = ' ';
+   LCDBUF1[9] = 'C';
+   strcpy(&LCDBUF1[10], format(current.mpg()));
 
    /* periodic mpg */
-   buf2[8] = ' ';
-   buf2[9] = 'P';
-   strcpy(&buf2[10], format(periodic.mpg()));
+   LCDBUF2[8] = ' ';
+   LCDBUF2[9] = 'P';
+   strcpy(&LCDBUF2[10], format(periodic.mpg()));
 
    #if (CFG_FUELCUT_INDICATOR != 0)
    fcut_pos = 8;
@@ -677,20 +675,20 @@ void doDisplayBarGraph(void) {
 void displayTripCombo(char t1, char t1L1, unsigned long t1V1, char t1L2, unsigned long t1V2, 
                       char t2, char t2L1, unsigned long t2V1, char t2L2, unsigned long t2V2) {
    /* Process line 1 of the display */
-   buf1[0] = t1;
-   buf1[1] = t1L1;
-   strcpy(&buf1[2], format(t1V1));
-   buf1[8] = ' ';
-   buf1[9] = t1L2;
-   strcpy(&buf1[10], format(t1V2));
+   LCDBUF1[0] = t1;
+   LCDBUF1[1] = t1L1;
+   strcpy(&LCDBUF1[2], format(t1V1));
+   LCDBUF1[8] = ' ';
+   LCDBUF1[9] = t1L2;
+   strcpy(&LCDBUF1[10], format(t1V2));
 
    /* Process line 2 of the display */
-   buf2[0] = t2;
-   buf2[1] = t2L1;
-   strcpy(&buf2[2], format(t2V1));
-   buf2[8] = ' ';
-   buf2[9] = t2L2;
-   strcpy(&buf2[10], format(t2V2));
+   LCDBUF2[0] = t2;
+   LCDBUF2[1] = t2L1;
+   strcpy(&LCDBUF2[2], format(t2V1));
+   LCDBUF2[8] = ' ';
+   LCDBUF2[9] = t2L2;
+   strcpy(&LCDBUF2[10], format(t2V2));
 
    #if (CFG_FUELCUT_INDICATOR != 0)
    fcut_pos = 8;
@@ -701,15 +699,15 @@ void displayTripCombo(char t1, char t1L1, unsigned long t1V1, char t1L2, unsigne
 void tDisplay( void * r){ //display trip functions.        
    Trip *t = (Trip *)r;      
 
-   strcpy(&buf1[0], "MH");
-   strcpy(&buf1[2], format(t->mph()));
-   strcpy(&buf1[8], "MG");
-   strcpy(&buf1[10], format(t->mpg()));
+   strcpy(&LCDBUF1[0], "MH");
+   strcpy(&LCDBUF1[2], format(t->mph()));
+   strcpy(&LCDBUF1[8], "MG");
+   strcpy(&LCDBUF1[10], format(t->mpg()));
 
-   strcpy(&buf2[0], "MI");
-   strcpy(&buf2[2], format(t->miles()));
-   strcpy(&buf2[8], "GA");
-   strcpy(&buf2[10], format(t->gallons()));
+   strcpy(&LCDBUF2[0], "MI");
+   strcpy(&LCDBUF2[2], format(t->miles()));
+   strcpy(&LCDBUF2[8], "GA");
+   strcpy(&LCDBUF2[10], format(t->gallons()));
 }      
     
  
@@ -935,21 +933,21 @@ void bigNum (unsigned long t, char * txt1, char * txt2){
      r=format(t/100);  // 009.86 
   }   
  
-  strcpy(&buf1[0], (bignumchars1+(r[2]-'0')*4));
-  buf1[3] = ' ';
-  strcpy(&buf1[4], (bignumchars1+(r[4]-'0')*4));
-  buf1[7] = ' ';
-  strcpy(&buf1[8], (bignumchars1+(r[5]-'0')*4));
-  buf1[11] = ' ';
-  strcpy(&buf1[12], txt1);
+  strcpy(&LCDBUF1[0], (bignumchars1+(r[2]-'0')*4));
+  LCDBUF1[3] = ' ';
+  strcpy(&LCDBUF1[4], (bignumchars1+(r[4]-'0')*4));
+  LCDBUF1[7] = ' ';
+  strcpy(&LCDBUF1[8], (bignumchars1+(r[5]-'0')*4));
+  LCDBUF1[11] = ' ';
+  strcpy(&LCDBUF1[12], txt1);
  
-  strcpy(&buf2[0], (bignumchars2+(r[2]-'0')*4));
-  buf2[3] = ' ';
-  strcpy(&buf2[4], (bignumchars2+(r[4]-'0')*4));
-  buf2[7] = dp;
-  strcpy(&buf2[8], (bignumchars2+(r[5]-'0')*4));
-  buf2[11] = ' ';
-  strcpy(&buf2[12], txt2);
+  strcpy(&LCDBUF2[0], (bignumchars2+(r[2]-'0')*4));
+  LCDBUF2[3] = ' ';
+  strcpy(&LCDBUF2[4], (bignumchars2+(r[4]-'0')*4));
+  LCDBUF2[7] = dp;
+  strcpy(&LCDBUF2[8], (bignumchars2+(r[5]-'0')*4));
+  LCDBUF2[11] = ' ';
+  strcpy(&LCDBUF2[12], txt2);
 
   #if (CFG_FUELCUT_INDICATOR != 0)
   fcut_pos = 3;
@@ -1061,19 +1059,19 @@ void editParm(unsigned char parmIdx){
    char *fmtv = uformat(v);
 
    /* -- line 1 -- */
-   strcpy(&buf1[0], parmLabels[parmIdx]);
+   strcpy(&LCDBUF1[0], parmLabels[parmIdx]);
 
    /* -- line 2 -- */
-   strcpy(&buf2[0], fmtv);
-   strcpy(&buf2[10], " OK XX");
+   strcpy(&LCDBUF2[0], fmtv);
+   strcpy(&LCDBUF2[10], " OK XX");
 
    /* -- write to display -- */
-   buf1[16] = 0; 
-   buf2[16] = 0;
+   LCDBUF1[16] = 0; 
+   LCDBUF2[16] = 0;
    LCD::LcdCommandWrite(LCD_ClearDisplay);
-   LCD::print(buf1);
+   LCD::print(LCDBUF1);
    LCD::gotoXY(0,1);    
-   LCD::print(buf2);
+   LCD::print(LCDBUF2);
 
    /* -- turn the cursor on -- */
    LCD::LcdCommandWrite(LCD_DisplayOnOffCtrl | LCD_DisplayOnOffCtrl_DispOn | LCD_DisplayOnOffCtrl_CursOn);
