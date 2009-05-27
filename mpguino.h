@@ -15,22 +15,6 @@
    #define eepBlkSize_Tank                     9
 #endif
 
-//do contrast first to get display dialed in
-#define contrastIdx                            0  
-#define vssPulsesPerMileIdx                    1
-#define microSecondsPerGallonIdx               2
-#define injPulsesPer2Revolutions               3
-#define currentTripResetTimeoutUSIdx           4
-#define tankSizeIdx                            5 
-#define injectorSettleTimeIdx                  6
-#define weightIdx                              7
-#define scratchpadIdx                          8
-#define vsspause                               9
-
-//array size      
-//#define parmsLength (sizeof(parms)/sizeof(unsigned long)) 
-#define length(x) (sizeof x / sizeof *x)
-
 #define nil                         3999999999ul
  
 #define guinosigold                    B10100101 
@@ -84,6 +68,21 @@
 // how many times will we try and loop in a second     
 #define loopsPerSecond                         2   
 
+/* --- Enums ------------------------------------------------- */
+
+enum longparms { contrastIdx=0, 
+                 vssPulsesPerMileIdx, 
+                 microSecondsPerGallonIdx, 
+                 injPulsesPer2Revolutions, 
+                 currentTripResetTimeoutUSIdx, 
+                 tankSizeIdx, 
+                 injectorSettleTimeIdx, 
+                 weightIdx, 
+                 scratchpadIdx, 
+                 vsspause };
+
+enum displayTypes {dtText=0, dtBigChars, dtBarGraph};
+
 /* --- Typedefs ---------------------------------------------- */
 
 typedef void (* pFunc)(void);//type for display function pointers      
@@ -96,14 +95,14 @@ typedef void (* pFunc)(void);//type for display function pointers
 #define MAX(value2, value1)\
     (((value1)>=(value2)) ? (value1) : (value2))
 
+#define length(x) (sizeof x / sizeof *x)
+
 /* --- Globals ----------------------------------------------- */
 
 int CLOCK;
 unsigned char DISPLAY_TYPE;
 unsigned char SCREEN;      
 unsigned char HOLD_DISPLAY; 
-
-enum displayTypes {dtText=0, dtBigChars, dtBarGraph};
 
 #if (CFG_FUELCUT_INDICATOR != 0)
 unsigned char fcut_pos;
@@ -125,7 +124,7 @@ unsigned char fcut_pos;
  * one decimal of precision in favor of a higher maximum -- 655.35 mpg.
  * This way we can save 20 bytes of memory. */
 unsigned short PERIODIC_HIST[10];
-unsigned short BAR_LIMIT = 6400;  /* 64 mpg */
+unsigned short BAR_LIMIT = 6400;  /* 64 mpg (4 mpg/px) */
 #endif
 
 /* default values */
@@ -158,33 +157,42 @@ char *parmLabels[]={
 /* --- Classes --------------------------------------------- */
 
 class Trip{      
-public:      
-  enum varnames {loopCount=0, injPulses, injHiSec, injHius, injIdleHiSec, 
-                 injIdleHius, vssPulses, vssEOCPulses, vssPulseLength};
-  unsigned long var[9];
-  /* ----
-     loopCount      -- how long has this trip been running      
-     injPulses      -- rpm      
-     injHiSec       -- seconds the injector has been open      
-     injHius        -- microseconds, fractional part of the injectors open
-     injIdleHiSec   -- seconds the injector has been open
-     injIdleHius    -- microseconds, fractional part of the injectors open
-     vssPulses      -- from the speedo
-     vssEOCPulses   -- from the speedo
-     vssPulseLength -- only used by instant
-  ---- */
+   public:      
+     enum varnames { loopCount=0, 
+                     injPulses, 
+                     injHiSec, 
+                     injHius, 
+                     injIdleHiSec, 
+                     injIdleHius, 
+                     vssPulses, 
+                     vssEOCPulses, 
+                     vssPulseLength };
 
-  //these functions actually return in thousandths,       
-  unsigned long miles();        
-  unsigned long gallons();      
-  unsigned long mpg();        
-  unsigned long mph();        
-  unsigned long time();         //mmm.ss        
-  unsigned long eocMiles();     //how many "free" miles?        
-  unsigned long idleGallons();  //how many gallons spent at 0 mph?        
-  void update(Trip t);      
-  void reset();      
-  Trip();      
+     unsigned long var[9];
+
+     /* ----
+        loopCount      -- how long has this trip been running      
+        injPulses      -- rpm      
+        injHiSec       -- seconds the injector has been open      
+        injHius        -- microseconds, fractional part of the injectors open
+        injIdleHiSec   -- seconds the injector has been open
+        injIdleHius    -- microseconds, fractional part of the injectors open
+        vssPulses      -- from the speedo
+        vssEOCPulses   -- from the speedo
+        vssPulseLength -- only used by instant
+     ---- */
+
+     //these functions actually return in thousandths,       
+     unsigned long miles();        
+     unsigned long gallons();      
+     unsigned long mpg();        
+     unsigned long mph();        
+     unsigned long time();         //mmm.ss        
+     unsigned long eocMiles();     //how many "free" miles?        
+     unsigned long idleGallons();  //how many gallons spent at 0 mph?        
+     void update(Trip t);      
+     void reset();      
+     Trip();      
 };      
  
 //LCD prototype      
