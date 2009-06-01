@@ -397,30 +397,39 @@ void loop (void){
 #endif
 
 //currentTripResetTimeoutUS
-    if(instant.var[Trip::vssPulses] == 0 && instant.var[Trip::injPulses] == 0 && HOLD_DISPLAY==0){
-      if(elapsedMicroseconds(lastActivity) > parms[currentTripResetTimeoutUSIdx] && lastActivity != nil){
-#if (TANK_IN_EEPROM_CFG)
+    if (    (instant.var[Trip::vssPulses] == 0) 
+         && (instant.var[Trip::injPulses] == 0) 
+         && (HOLD_DISPLAY==0) 
+       ) 
+    {
+      if(   (elapsedMicroseconds(lastActivity) > parms[currentTripResetTimeoutUSIdx])
+         && (lastActivity != nil)
+        )
+      {
+        #if (TANK_IN_EEPROM_CFG)
         writeEepBlock32(eepBlkAddr_Tank, &tank.var[0], eepBlkSize_Tank);
-#endif
-#if (SLEEP_CFG & Sleep_bkl)
+        #endif
+        #if (SLEEP_CFG & Sleep_bkl)
         analogWrite(BrightnessPin,brightness[0]);    //nitey night
-#endif
-#if (SLEEP_CFG & Sleep_lcd)
+        #endif
+        #if (SLEEP_CFG & Sleep_lcd)
         LCD::LcdCommandWrite(LCD_DisplayOnOffCtrl);  //LCD off unless explicitly told ON
-#endif
+        #endif
         lastActivity = nil;
       }
-    }else{
-      if(lastActivity == nil){//wake up!!!
-#if (SLEEP_CFG & Sleep_bkl)
+    }
+    else {
+      /* wake up! */
+      if(lastActivity == nil) {
+        #if (SLEEP_CFG & Sleep_bkl)
         analogWrite(BrightnessPin,brightness[brightnessIdx]);    
-#endif
-#if (SLEEP_CFG & Sleep_lcd)
+        #endif
+        #if (SLEEP_CFG & Sleep_lcd)
         // Turn on the LCD again.  Display should be restored.
         LCD::LcdCommandWrite(LCD_DisplayOnOffCtrl | LCD_DisplayOnOffCtrl_DispOn);
         // TODO:  Does the above cause a problem if sleep happens during a settings mode? 
         //        Said another way, we don't get the cursor back unless we ask for it.
-#endif
+        #endif
         lastActivity=loopStart;
         current.reset();
         tank.var[Trip::loopCount] = tankHold;
@@ -430,7 +439,8 @@ void loop (void){
         periodic.reset();
         periodic.update(instant);
 #endif
-      }else{
+      }
+      else{
         lastActivity=loopStart;
         tankHold = tank.var[Trip::loopCount];
       }
