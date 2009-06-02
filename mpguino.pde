@@ -262,6 +262,9 @@ pFunc displayFuncs[] ={
    doDisplayBigPeriodic,
    doDisplayBarGraph,
 #endif
+#if (DTE_CFG == 1)
+   doDisplayBigDTE,
+#endif
 };      
 
 #define displayFuncSize (sizeof(displayFuncs)/sizeof(pFunc)) //array size      
@@ -292,6 +295,9 @@ void setup (void) {
 #if (BARGRAPH_DISPLAY_CFG == 1)
    displayFuncNames[x++]=  PSTR("BIG Periodic ");
    displayFuncNames[x++]=  PSTR("Bargraph ");
+#endif
+#if (DTE_CFG == 1)
+   displayFuncNames[x++]=  PSTR("BIG DTE ");
 #endif
 
    pinMode(BrightnessPin,OUTPUT);      
@@ -563,10 +569,10 @@ char *format(unsigned long num) {
 }
  
 //get a string from flash 
-char * getStr(prog_char * str){ 
-  static char mBuff[17]; //used by getStr 
-  strcpy_P(mBuff, str); 
-  return mBuff; 
+char *getStr(prog_char * str) { 
+   static char mBuff[17]; //used by getStr 
+   strcpy_P(mBuff, str); 
+   return mBuff; 
 } 
 
  
@@ -679,6 +685,21 @@ void doDisplayBarGraph(void) {
    #if (CFG_FUELCUT_INDICATOR != 0)
    fcut_pos = 8;
    #endif
+}
+#endif
+
+#if (DTE_CFG == 1)
+void doDisplayBigDTE(void) {
+   unsigned long dte;
+   signed long gals_remaining;
+   /* subtract a couple of extra gals for safety factor */
+   gals_remaining = (parms[tankSizeIdx] - tank.gallons()) - 2000;
+   gals_remaining = MAX(gals_remaining, 0);
+   dte = gals_remaining * (tank.mpg()/100);
+   dte /= 10; /* divide by 10 here to avoid precision loss */
+   /* dividing a signed long by 10 for some reason adds 100 bytes to program size?
+    * otherwise I would've divided gals by 10 earlier! */
+   bigNum(dte, "DIST", "TO E");
 }
 #endif
  
