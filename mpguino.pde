@@ -59,19 +59,20 @@ static unsigned long tmp3[2];
 #endif
 
 #if (CFG_BIGFONT_TYPE == 1)
-   //32 = 0x20 = space
+   /* 32 = 0x20 = space */
    const unsigned char LcdNewChars = 5;
    char bignumchars1[]={4,1,4,0, 1,4,32,0, 3,3,4,0, 1,3,4,0, 4,2,4,0, 
                         4,3,3,0,  4,3,3,0, 1,1,4,0, 4,3,4,0, 4,3,4,0}; 
    char bignumchars2[]={4,2,4,0, 2,4,2,0,   4,2,2,0, 2,2,4,0, 32,32,4,0, 
                         2,2,4,0, 4,2,4,0, 32,4,32,0, 4,2,4,0,   2,2,4,0};  
 #elif (CFG_BIGFONT_TYPE == 2)
-   //255 = 0xFF = all black character
+   /* 32 = 0x20 = space */
+   /* 255 = 0xFF = all black character */
    const unsigned char LcdNewChars = 8;
-   char bignumchars1[]={   7,1,8,0, 1,255,32,0, 3,3,8,0, 1,3,8,0, 255,2,255,0,  
-                         255,3,3,0,    7,3,3,0, 1,1,6,0, 7,3,8,0,     7,3,8,0};
-   char bignumchars2[]={4,2,6,0, 32,255,32,0, 255,2,2,0, 2,2,6,0, 32,32,255,0,
-                        2,2,6,0,     4,2,6,0, 32,7,32,0, 4,2,6,0,     2,2,6,0};
+   char bignumchars1[]={  7,1,8,0,  1,255,32,0,   3,3,8,0, 1,3,8,0, 255,2,255,0,  
+                        255,3,3,0,     7,3,3,0,   1,1,6,0, 7,3,8,0,     7,3,8,0};
+   char bignumchars2[]={  4,2,6,0, 32,255,32,0, 255,2,2,0, 2,2,6,0, 32,32,255,0,
+                          2,2,6,0,     4,2,6,0, 32,7,32,0, 4,2,6,0,     2,2,6,0};
 #endif
 
 //middle button cycles through these brightness settings      
@@ -161,7 +162,7 @@ unsigned long elapsedMicroseconds(unsigned long startMicroSeconds, unsigned long
    if(currentMicroseconds >= startMicroSeconds) {
       return currentMicroseconds-startMicroSeconds;      
    }
-   return 4294967295 - (startMicroSeconds-currentMicroseconds);      
+   return 0xFFFFFFFF - (startMicroSeconds-currentMicroseconds);      
 }      
 
 unsigned long elapsedMicroseconds(unsigned long startMicroSeconds ){      
@@ -536,12 +537,14 @@ char *format(unsigned long num) {
    unsigned char dp = 3;
    unsigned char x = 6;
 
-   while(num > 999999) {
+   while (num > 999999) {
       num /= 10;
       dp++;
       if( dp == 5 ) break; /* We'll lose the top numbers like an odometer */
    }
-   if(dp == 5) dp = 99; /* We don't need a decimal point here. */
+   if (dp == 5) {
+      dp = 99;
+   }                       /* We don't need a decimal point here. */
 
    /* Round off the non-printed value. */
    if((num % 10) > 4) {
@@ -551,9 +554,9 @@ char *format(unsigned long num) {
    num /= 10;
 
 
-   while(x > 0){
+   while (x > 0) {
       x--;
-      if(x==dp) {
+      if (x == dp) {
          /* time to poke in the decimal point? */
          fBuff[x]='.';
       }
@@ -656,12 +659,14 @@ void doDisplayBarGraph(void) {
       DISPLAY_TYPE = dtBarGraph;
    }
 
+   /* plot bars */
    for(i=8; i>0; i--) {
       /* limit size -- print oldest first */
       stemp = MIN(PERIODIC_HIST[i-1], BAR_LIMIT)/10;
       /* round up if necessary */
-      if ((stemp % 10) > 4)
+      if ((stemp % 10) > 4) {
          stemp += 10;
+      }
       /* convert to a number from 0-16 */
       temp = (signed char)((stemp * 16) / (BAR_LIMIT/10));
       temp = MIN(temp, 16);  /* should not be necessary... */
@@ -672,17 +677,18 @@ void doDisplayBarGraph(void) {
       j++;
    }
 
-   /* current mpg */
+   /* end of line 1: show current mpg */
    LCDBUF1[8] = ' ';
    LCDBUF1[9] = 'C';
    strcpy(&LCDBUF1[10], format(current.mpg()));
 
-   /* periodic mpg */
+   /* end of line 2: show periodic mpg */
    LCDBUF2[8] = ' ';
    LCDBUF2[9] = 'P';
    strcpy(&LCDBUF2[10], format(periodic.mpg()));
 
    #if (CFG_FUELCUT_INDICATOR != 0)
+   /* where should the fuel cut indication go? */
    fcut_pos = 8;
    #endif
 }
@@ -692,8 +698,8 @@ void doDisplayBarGraph(void) {
 void doDisplayBigDTE(void) {
    unsigned long dte;
    signed long gals_remaining;
-   /* subtract a couple of extra gals for safety factor */
-   gals_remaining = (parms[tankSizeIdx] - tank.gallons()) - 2000;
+   /* TODO: user configurable safety factor see minus zero below */
+   gals_remaining = (parms[tankSizeIdx] - tank.gallons()) - 0;
    gals_remaining = MAX(gals_remaining, 0);
    dte = gals_remaining * (tank.mpg()/100);
    dte /= 10; /* divide by 10 here to avoid precision loss */
