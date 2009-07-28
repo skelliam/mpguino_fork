@@ -395,7 +395,9 @@ void loop (void) {
       tank.update(instant);      //use instant to update tank
 
       #if (BARGRAPH_DISPLAY_CFG == 1)
-      periodic.update(instant);  //use instant to update periodic 
+      if ( lastActivity != nil) {
+         periodic.update(instant);  //use instant to update periodic 
+      }
       /* reset periodic every 2 minutes */
       if (periodic.var[Trip::loopCount] >= 240) {
          temp = MIN((periodic.mpg()/10), 0xFFFF);
