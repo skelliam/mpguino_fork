@@ -8,7 +8,7 @@
 
 /* --- Global Variable Declarations -------------------------- */
 
-unsigned long maxLoopLength = 0;            // see if we are overutilizing the CPU      
+unsigned long MAXLOOPLENGTH = 0;            // see if we are overutilizing the CPU      
 
 //for display computing
 static unsigned long tmp1[2];
@@ -347,16 +347,19 @@ void setup (void) {
 } /* void setup (void) */
  
 void loop (void) {
-   unsigned long lastActivity =microSeconds();
+   unsigned long lastActivity;
    unsigned long tankHold;      //state at point of last activity
    unsigned long loopStart;
    unsigned long temp;          //scratch variable
 
+   lastActivity = microSeconds();
+
    if(newRun !=1) {
-      initGuino();//go through the initialization screen
+      //go through the initialization screen
+      initGuino();
    }
 
-   while(true) {      
+   while (true) {      
       #if (CFG_FUELCUT_INDICATOR != 0)
       fcut_pos = 0;
       #endif
@@ -390,15 +393,18 @@ void loop (void) {
       simpletx(format(instant.var[Trip::vssPulses]*1000));
       simpletx("\n");
       #endif
-       
-      current.update(instant);   //use instant to update current      
-      tank.update(instant);      //use instant to update tank
+
+      /* --- update all of the trip objects */
+      current.update(instant);       //use instant to update current      
+      tank.update(instant);          //use instant to update tank
+      #if (BARGRAPH_DISPLAY_CFG == 1)
+      if (lastActivity != nil) {
+         periodic.update(instant);   //use instant to update periodic 
+      }
+      #endif
 
       #if (BARGRAPH_DISPLAY_CFG == 1)
-      if ( lastActivity != nil) {
-         periodic.update(instant);  //use instant to update periodic 
-      }
-      /* reset periodic every 2 minutes */
+      /* --- For bargraph: reset periodic every 2 minutes */
       if (periodic.var[Trip::loopCount] >= 240) {
          temp = MIN((periodic.mpg()/10), 0xFFFF);
          /* add temp into first element and shift items in array */
@@ -407,7 +413,7 @@ void loop (void) {
       }
       #endif
 
-      //currentTripResetTimeoutUS
+      /* --- Decide whether to go to sleep or wake up */
       if (    (instant.var[Trip::vssPulses] == 0) 
             && (instant.var[Trip::injPulses] == 0) 
             && (HOLD_DISPLAY==0) 
@@ -431,7 +437,7 @@ void loop (void) {
       }
       else {
          /* wake up! */
-         if(lastActivity == nil) {
+         if (lastActivity == nil) {
             #if (SLEEP_CFG & Sleep_bkl)
             analogWrite(BrightnessPin,brightness[brightnessIdx]);    
             #endif
@@ -458,79 +464,98 @@ void loop (void) {
       }
        
 
-    if(HOLD_DISPLAY==0) {
-       displayFuncs[SCREEN]();    //call the appropriate display routine      
+   if (HOLD_DISPLAY == 0) {
+      displayFuncs[SCREEN]();    //call the appropriate display routine      
 
-#if (CFG_FUELCUT_INDICATOR != 0)
-       /* insert visual indication that fuel cut is happening */
-       if(    (instant.var[Trip::injPulses] == 0) 
-           && (instant.var[Trip::vssPulses] > 0) ) {
-          #if (CFG_FUELCUT_INDICATOR == 1)
-          LCDBUF1[fcut_pos] = 'c';
-          #elif ((CFG_FUELCUT_INDICATOR == 2) || (CFG_FUELCUT_INDICATOR == 3))
-          LCDBUF1[fcut_pos] = spinner[CLOCK & 0x03];
-          #endif
-       }
-#endif
-
-       /* ensure that we have terminating zeros */
-       LCDBUF1[16] = 0;
-       LCDBUF2[16] = 0;
-
-       /* print line 1 */
-       LCD::LcdCommandWrite(LCD_ReturnHome);
-       LCD::print(LCDBUF1);
-
-       /* print line 2 */
-       LCD::gotoXY(0,1);
-       LCD::print(LCDBUF2);
-
-       LCD::LcdCommandWrite(LCD_ReturnHome);
-
-    
-   //see if any buttons were pressed, display a brief message if so      
-         if(!(buttonState&lbuttonBit) && !(buttonState&rbuttonBit)){// left and right = initialize      
-             LCD::print(getStr(PSTR("Setup ")));    
-             initGuino();  
-         }else if (!(buttonState&lbuttonBit) && !(buttonState&mbuttonBit)){// left and middle = tank reset      
-             tank.reset();      
-             LCD::print(getStr(PSTR("Tank Reset ")));      
-         }else if(!(buttonState&mbuttonBit) && !(buttonState&rbuttonBit)){// right and middle = current reset      
-             current.reset();      
-             LCD::print(getStr(PSTR("Current Reset ")));      
-         }else if(!(buttonState&lbuttonBit)){ //left is rotate through screeens to the left      
-           if(SCREEN!=0)      
-             SCREEN=(SCREEN-1);       
-           else      
-             SCREEN=displayFuncSize-1;      
-           LCD::print(getStr(displayFuncNames[SCREEN]));      
-         }else if(!(buttonState&mbuttonBit)){ //middle is cycle through brightness settings      
-           brightnessIdx = (brightnessIdx + 1) % brightnessLength;      
-           analogWrite(BrightnessPin,brightness[brightnessIdx]);      
-           LCD::print(getStr(PSTR("Brightness ")));      
-           LCD::LcdDataWrite('0' + brightnessIdx);      
-           LCD::print(" ");      
-         }else if(!(buttonState&rbuttonBit)){//right is rotate through screeens to the left      
-           SCREEN=(SCREEN+1)%displayFuncSize;      
-           LCD::print(getStr(displayFuncNames[SCREEN]));      
-         }      
-         if(buttonState!=buttonsUp)
-            HOLD_DISPLAY=1;
-        }
-        else {
-           HOLD_DISPLAY=0;
-        } 
-       buttonState=buttonsUp;//reset the buttons      
-    
-      //keep track of how long the loops take before we go int waiting.      
-      maxLoopLength = MAX(maxLoopLength, elapsedMicroseconds(loopStart));
-
-      while (elapsedMicroseconds(loopStart) < (looptime)) {
-         //wait for the end of a second to arrive
-         continue;
+      #if (CFG_FUELCUT_INDICATOR != 0)
+      /* insert visual indication that fuel cut is happening */
+      if(    (instant.var[Trip::injPulses] == 0) 
+          && (instant.var[Trip::vssPulses] > 0) 
+        ) 
+      {
+         #if (CFG_FUELCUT_INDICATOR == 1)
+         LCDBUF1[fcut_pos] = 'x';
+         #elif ((CFG_FUELCUT_INDICATOR == 2) || (CFG_FUELCUT_INDICATOR == 3))
+         LCDBUF1[fcut_pos] = spinner[CLOCK & 0x03];
+         #endif
       }
-      CLOCK++;
-   } /* while(true) */
+      #endif
+
+      /* ensure that we have terminating zeros */
+      LCDBUF1[16] = 0;
+      LCDBUF2[16] = 0;
+
+      /* print line 1 */
+      LCD::LcdCommandWrite(LCD_ReturnHome);
+      LCD::print(LCDBUF1);
+
+      /* print line 2 */
+      LCD::gotoXY(0,1);
+      LCD::print(LCDBUF2);
+
+      LCD::LcdCommandWrite(LCD_ReturnHome);
+
+      //see if any buttons were pressed, display a brief message if so      
+      if (!(buttonState&lbuttonBit) && !(buttonState&rbuttonBit)) {
+         // left and right = initialize      
+         LCD::print(getStr(PSTR("Setup ")));    
+         initGuino();  
+      }
+      else if (!(buttonState&lbuttonBit) && !(buttonState&mbuttonBit)) {
+         // left and middle = tank reset      
+         tank.reset();      
+         LCD::print(getStr(PSTR("Tank Reset ")));      
+      }
+      else if (!(buttonState&mbuttonBit) && !(buttonState&rbuttonBit)) {
+         // right and middle = current reset      
+         current.reset();      
+         LCD::print(getStr(PSTR("Current Reset ")));      
+      }
+      else if (!(buttonState&lbuttonBit)) {
+         // left is rotate through screeens to the left      
+         if (SCREEN!=0) {
+             SCREEN = (SCREEN-1);       
+         }
+         else {
+            SCREEN=displayFuncSize-1;      
+         }
+         LCD::print(getStr(displayFuncNames[SCREEN]));      
+      }
+      else if (!(buttonState&mbuttonBit)) {
+         // middle is cycle through brightness settings      
+         brightnessIdx = (brightnessIdx + 1) % brightnessLength;      
+         analogWrite(BrightnessPin,brightness[brightnessIdx]);      
+         LCD::print(getStr(PSTR("Brightness ")));      
+         LCD::LcdDataWrite('0' + brightnessIdx);      
+         LCD::print(" ");      
+      }
+      else if (!(buttonState&rbuttonBit)) {
+         // right is rotate through screeens to the left      
+         SCREEN=(SCREEN+1)%displayFuncSize;      
+         LCD::print(getStr(displayFuncNames[SCREEN]));      
+      }      
+      if (buttonState!=buttonsUp) {
+         HOLD_DISPLAY = 1;
+      }
+   }  /* if (HOLD_DISPLAY == 0) */
+   else {
+      HOLD_DISPLAY = 0;
+   } 
+
+   // reset the buttons      
+   buttonState=buttonsUp;
+    
+   // keep track of how long the loops take before we go int waiting.      
+   MAXLOOPLENGTH = MAX(MAXLOOPLENGTH, elapsedMicroseconds(loopStart));
+
+   while (elapsedMicroseconds(loopStart) < (looptime)) {
+      // wait for the end of the loop to arrive (0.5 sec)
+      continue;
+   }
+
+   CLOCK++;
+
+   } /* while (true) */
 } /* loop (void) */
  
  
@@ -582,7 +607,7 @@ char *getStr(prog_char * str) {
 
  
 void doDisplayCustom() { 
-   displayTripCombo('M','G',instantmpg(),'S',instantmph(),'G','H',instantgph(),'C',current.mpg());
+   displayTripCombo('I','m',instantmpg(),'s',instantmph(),'G','H',instantgph(),'m',current.mpg());
 }      
 
 #if (0)
@@ -596,15 +621,15 @@ void doDisplayCustom() {
 #endif
 
 void doDisplayEOCIdleData() {
-   displayTripCombo('C','E',current.eocMiles(),'G',current.idleGallons(),'T','E',tank.eocMiles(),'G',tank.idleGallons());
+   displayTripCombo('C','e',current.eocMiles(),'g',current.idleGallons(),'T','e',tank.eocMiles(),'g',tank.idleGallons());
 }      
 
 void doDisplayInstantCurrent() {
-   displayTripCombo('I','M',instantmpg(),'S',instantmph(),'C','M',current.mpg(),'D',current.miles());
+   displayTripCombo('I','m',instantmpg(),'s',instantmph(),'C','m',current.mpg(),'d',current.miles());
 }      
  
 void doDisplayInstantTank() {
-   displayTripCombo('I','M',instantmpg(),'S',instantmph(),'T','M',tank.mpg(),'D',tank.miles());
+   displayTripCombo('I','m',instantmpg(),'s',instantmph(),'T','m',tank.mpg(),'d',tank.miles());
 }      
 
 void doDisplayBigInstant() {
@@ -638,7 +663,7 @@ void doDisplayTankTripData(void) {
 void doDisplaySystemInfo(void) {      
    /* display max cpu utilization and ram */
    strcpy(&LCDBUF1[0], "C%");
-   strcpy(&LCDBUF1[2], format(maxLoopLength*1000/(looptime/100)));
+   strcpy(&LCDBUF1[2], format(MAXLOOPLENGTH*1000/(looptime/100)));
    strcpy(&LCDBUF1[8], " T");
    strcpy(&LCDBUF1[10], format(tank.time()));
 
@@ -738,14 +763,14 @@ void displayTripCombo(char t1, char t1L1, unsigned long t1V1, char t1L2, unsigne
 void tDisplay( void * r){ //display trip functions.        
    Trip *t = (Trip *)r;      
 
-   strcpy(&LCDBUF1[0], "MH");
+   strcpy(&LCDBUF1[0], " s");
    strcpy(&LCDBUF1[2], format(t->mph()));
-   strcpy(&LCDBUF1[8], "MG");
+   strcpy(&LCDBUF1[8], " m");
    strcpy(&LCDBUF1[10], format(t->mpg()));
 
-   strcpy(&LCDBUF2[0], "MI");
+   strcpy(&LCDBUF2[0], " d");
    strcpy(&LCDBUF2[2], format(t->miles()));
-   strcpy(&LCDBUF2[8], "GA");
+   strcpy(&LCDBUF2[8], " g");
    strcpy(&LCDBUF2[10], format(t->gallons()));
 }      
     
