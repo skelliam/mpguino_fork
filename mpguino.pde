@@ -280,6 +280,10 @@ void setup (void) {
    SCREEN = 0;
    HOLD_DISPLAY = 0;
 
+   #if (CFG_IDLE_MESSAGE != 0)
+   IDLE_DISPLAY_DELAY = 0;
+   #endif
+
    init2();
    newRun = load();//load the default parameters
 
@@ -466,16 +470,25 @@ void loop (void) {
 
    if (HOLD_DISPLAY == 0) {
 
-      #if (!CFG_IDLE_MESSAGE)
+      #if (CFG_IDLE_MESSAGE == 0)
       displayFuncs[SCREEN]();    //call the appropriate display routine      
-      #endif
-
-      #if (CFG_IDLE_MESSAGE == 1)
+      #elif (CFG_IDLE_MESSAGE == 1)
       /* --- during idle, jump to EOC information */
       if (    (instant.var[Trip::injPulses] >  0) 
            && (instant.var[Trip::vssPulses] == 0) 
          ) 
       {
+         if (IDLE_DISPLAY_DELAY < 6) {
+            IDLE_DISPLAY_DELAY++;
+         }
+      }
+      else {
+         if (IDLE_DISPLAY_DELAY > 0) {
+            IDLE_DISPLAY_DELAY--;
+         }
+      }
+
+      if (IDLE_DISPLAY_DELAY > 0) {
          doDisplayEOCIdleData();
       }
       else {
@@ -497,7 +510,7 @@ void loop (void) {
       }
       #endif
 
-      /* ensure that we have terminating zeros */
+      /* --- ensure that we have terminating zeros */
       LCDBUF1[16] = 0;
       LCDBUF2[16] = 0;
 

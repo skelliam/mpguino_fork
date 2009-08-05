@@ -84,6 +84,10 @@ unsigned char HOLD_DISPLAY;
 static char LCDBUF1[bufsize];
 static char LCDBUF2[bufsize];
 
+#if (CFG_IDLE_MESSAGE != 0)
+unsigned char IDLE_DISPLAY_DELAY;
+#endif
+
 #if (CFG_FUELCUT_INDICATOR != 0)
 unsigned char fcut_pos;
   #if (CFG_FUELCUT_INDICATOR == 2)
