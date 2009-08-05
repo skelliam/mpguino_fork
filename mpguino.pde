@@ -465,13 +465,29 @@ void loop (void) {
        
 
    if (HOLD_DISPLAY == 0) {
+
+      #if (!CFG_IDLE_MESSAGE)
       displayFuncs[SCREEN]();    //call the appropriate display routine      
+      #endif
+
+      #if (CFG_IDLE_MESSAGE == 1)
+      /* --- during idle, jump to EOC information */
+      if (    (instant.var[Trip::injPulses] >  0) 
+           && (instant.var[Trip::vssPulses] == 0) 
+         ) 
+      {
+         doDisplayEOCIdleData();
+      }
+      else {
+         displayFuncs[SCREEN]();
+      }
+      #endif
 
       #if (CFG_FUELCUT_INDICATOR != 0)
-      /* insert visual indication that fuel cut is happening */
-      if(    (instant.var[Trip::injPulses] == 0) 
-          && (instant.var[Trip::vssPulses] > 0) 
-        ) 
+      /* --- insert visual indication that fuel cut is happening */
+      if (    (instant.var[Trip::injPulses] == 0) 
+           && (instant.var[Trip::vssPulses] >  0) 
+         ) 
       {
          #if (CFG_FUELCUT_INDICATOR == 1)
          LCDBUF1[fcut_pos] = 'x';
@@ -955,29 +971,30 @@ void Trip::reset(){
    var[Trip::vssEOCPulses]=0;
 }      
  
-void Trip::update(Trip t){     
-  var[Trip::loopCount]++;  //we call update once per loop     
-  var[Trip::vssPulses]+=t.var[Trip::vssPulses];      
-  var[Trip::vssPulseLength]+=t.var[Trip::vssPulseLength];
-  if(t.var[Trip::injPulses] ==0 )  //track distance traveled with engine off
-    var[Trip::vssEOCPulses]+=t.var[Trip::vssPulses];
-  
-  if(t.var[Trip::injPulses] > 2 && t.var[Trip::injHius]<500000){//chasing ghosts      
-    var[Trip::injPulses]+=t.var[Trip::injPulses];      
-    var[Trip::injHius]+=t.var[Trip::injHius];      
-    if (var[Trip::injHius]>=1000000){  //rollover into the var[Trip::injHiSec] counter      
-      var[Trip::injHiSec]++;      
-      var[Trip::injHius]-=1000000;      
-    }
-    if(t.var[Trip::vssPulses] == 0){    //track gallons spent sitting still
-      
-      var[Trip::injIdleHius]+=t.var[Trip::injHius];      
-      if (var[Trip::injIdleHius]>=1000000){  //r
-        var[Trip::injIdleHiSec]++;
-        var[Trip::injIdleHius]-=1000000;      
-      }      
-    }
-  }      
+void Trip::update(Trip t) {     
+   var[Trip::loopCount]++;  //we call update once per loop     
+   var[Trip::vssPulses]+=t.var[Trip::vssPulses];      
+   var[Trip::vssPulseLength]+=t.var[Trip::vssPulseLength];
+   if ( t.var[Trip::injPulses] == 0 )  //track distance traveled with engine off
+   var[Trip::vssEOCPulses]+=t.var[Trip::vssPulses];
+
+   if ( t.var[Trip::injPulses] > 2 && t.var[Trip::injHius]<500000 ) {// chasing ghosts      
+      var[Trip::injPulses]+=t.var[Trip::injPulses];      
+      var[Trip::injHius]+=t.var[Trip::injHius];      
+      if (var[Trip::injHius]>=1000000){  
+         // rollover into the var[Trip::injHiSec] counter      
+         var[Trip::injHiSec]++;      
+         var[Trip::injHius]-=1000000;      
+      }
+      if(t.var[Trip::vssPulses] == 0) {    
+         // track gallons spent sitting still
+         var[Trip::injIdleHius]+=t.var[Trip::injHius];      
+         if (var[Trip::injIdleHius]>=1000000) {  //r
+            var[Trip::injIdleHiSec]++;
+            var[Trip::injIdleHius]-=1000000;      
+         }      
+      }
+   }      
 }   
  
 
