@@ -259,13 +259,12 @@ pFunc displayFuncs[] ={
    doDisplayTankTripData, 
    doDisplayEOCIdleData, 
    doDisplaySystemInfo,
-#if (BARGRAPH_DISPLAY_CFG == 1)
-   doDisplayBigPeriodic,
+   #if (BARGRAPH_DISPLAY_CFG == 1)
    doDisplayBarGraph,
-#endif
-#if (DTE_CFG == 1)
+   #endif
+   #if (DTE_CFG == 1)
    doDisplayBigDTE,
-#endif
+   #endif
 };      
 
 #define displayFuncSize (sizeof(displayFuncs)/sizeof(pFunc)) //array size      
@@ -297,13 +296,12 @@ void setup (void) {
    displayFuncNames[x++]=  PSTR("Tank "); 
    displayFuncNames[x++]=  PSTR("EOC mi/Idle gal "); 
    displayFuncNames[x++]=  PSTR("CPU Monitor ");      
-#if (BARGRAPH_DISPLAY_CFG == 1)
-   displayFuncNames[x++]=  PSTR("BIG Periodic ");
+   #if (BARGRAPH_DISPLAY_CFG == 1)
    displayFuncNames[x++]=  PSTR("Bargraph ");
-#endif
-#if (DTE_CFG == 1)
+   #endif
+   #if (DTE_CFG == 1)
    displayFuncNames[x++]=  PSTR("BIG DTE ");
-#endif
+   #endif
 
    pinMode(BrightnessPin,OUTPUT);      
    analogWrite(BrightnessPin,brightness[brightnessIdx]);      
@@ -365,7 +363,7 @@ void loop (void) {
 
    while (true) {      
       #if (CFG_FUELCUT_INDICATOR != 0)
-      fcut_pos = 0;
+      FCUT_POS = 0;
       #endif
       loopStart = microSeconds();      
       instant.reset();           //clear instant      
@@ -503,14 +501,14 @@ void loop (void) {
          ) 
       {
          #if (CFG_FUELCUT_INDICATOR == 1)
-         LCDBUF1[fcut_pos] = 'x';
+         LCDBUF1[FCUT_POS] = 'x';
          #elif ((CFG_FUELCUT_INDICATOR == 2) || (CFG_FUELCUT_INDICATOR == 3))
-         LCDBUF1[fcut_pos] = spinner[CLOCK & 0x03];
+         LCDBUF1[FCUT_POS] = spinner[CLOCK & 0x03];
          #endif
       }
       #endif
 
-      /* --- ensure that we have terminating zeros */
+      /* --- ensure that we have terminating nulls */
       LCDBUF1[16] = 0;
       LCDBUF2[16] = 0;
 
@@ -524,23 +522,23 @@ void loop (void) {
 
       LCD::LcdCommandWrite(LCD_ReturnHome);
 
-      //see if any buttons were pressed, display a brief message if so      
-      if (!(buttonState&lbuttonBit) && !(buttonState&rbuttonBit)) {
+      /* --- see if any buttons were pressed, display a brief message if so --- */
+      if (LeftButtonPressed && RightButtonPressed) {
          // left and right = initialize      
          LCD::print(getStr(PSTR("Setup ")));    
          initGuino();  
       }
-      else if (!(buttonState&lbuttonBit) && !(buttonState&mbuttonBit)) {
+      else if (LeftButtonPressed && MiddleButtonPressed) {
          // left and middle = tank reset      
          tank.reset();      
          LCD::print(getStr(PSTR("Tank Reset ")));      
       }
-      else if (!(buttonState&mbuttonBit) && !(buttonState&rbuttonBit)) {
+      else if (MiddleButtonPressed && RightButtonPressed) {
          // right and middle = current reset      
          current.reset();      
          LCD::print(getStr(PSTR("Current Reset ")));      
       }
-      else if (!(buttonState&lbuttonBit)) {
+      else if (LeftButtonPressed) {
          // left is rotate through screeens to the left      
          if (SCREEN!=0) {
              SCREEN = (SCREEN-1);       
@@ -550,7 +548,7 @@ void loop (void) {
          }
          LCD::print(getStr(displayFuncNames[SCREEN]));      
       }
-      else if (!(buttonState&mbuttonBit)) {
+      else if (MiddleButtonPressed) {
          // middle is cycle through brightness settings      
          brightnessIdx = (brightnessIdx + 1) % brightnessLength;      
          analogWrite(BrightnessPin,brightness[brightnessIdx]);      
@@ -558,11 +556,17 @@ void loop (void) {
          LCD::LcdDataWrite('0' + brightnessIdx);      
          LCD::print(" ");      
       }
-      else if (!(buttonState&rbuttonBit)) {
+      else if (RightButtonPressed) {
          // right is rotate through screeens to the left      
          SCREEN=(SCREEN+1)%displayFuncSize;      
          LCD::print(getStr(displayFuncNames[SCREEN]));      
       }      
+      #if (CFG_IDLE_MESSAGE == 1)
+      if (LeftButtonPressed || RightButtonPressed) {
+         /* When the user wants to change screens, avoid the idle screen for a while */
+         IDLE_DISPLAY_DELAY = -60;
+      }
+      #endif
       if (buttonState!=buttonsUp) {
          HOLD_DISPLAY = 1;
       }
@@ -673,12 +677,6 @@ void doDisplayBigTank()    {
    bigNum(tank.mpg(),"TANK","MPG ");
 }      
 
-#if (BARGRAPH_DISPLAY_CFG == 1)
-void doDisplayBigPeriodic() {
-   bigNum(periodic.mpg(), "PERI", "MPG ");
-}
-#endif
- 
 void doDisplayCurrentTripData(void) {
    /* display current trip formatted data */
    tDisplay(&current);
@@ -745,7 +743,7 @@ void doDisplayBarGraph(void) {
 
    #if (CFG_FUELCUT_INDICATOR != 0)
    /* where should the fuel cut indication go? */
-   fcut_pos = 8;
+   FCUT_POS = 8;
    #endif
 }
 #endif
@@ -784,7 +782,7 @@ void displayTripCombo(char t1, char t1L1, unsigned long t1V1, char t1L2, unsigne
    strcpy(&LCDBUF2[10], format(t2V2));
 
    #if (CFG_FUELCUT_INDICATOR != 0)
-   fcut_pos = 8;
+   FCUT_POS = 8;
    #endif
 }      
  
@@ -1044,7 +1042,7 @@ void bigNum (unsigned long t, char * txt1, char * txt2){
   strcpy(&LCDBUF2[12], txt2);
 
   #if (CFG_FUELCUT_INDICATOR != 0)
-  fcut_pos = 3;
+  FCUT_POS = 3;
   #endif
   
 }      
@@ -1192,7 +1190,7 @@ void editParm(unsigned char parmIdx){
       LCD::gotoXY(14,1);   
 
      if(keyLock == 0) { 
-        if(!(buttonState&lbuttonBit) && !(buttonState&rbuttonBit)) {// left & right
+        if (LeftButtonPressed && RightButtonPressed) {
             if (p<10)
                p=10;
             else if (p==10) 
@@ -1211,13 +1209,13 @@ void editParm(unsigned char parmIdx){
                (parmIdx == contrastIdx) ? p=8 : p=11;  
             }
 #endif
-        }else  if(!(buttonState&lbuttonBit)){// left
+        }else if (LeftButtonPressed) {
             p=p-1;
             if(p==255)p=11;
-        }else if(!(buttonState&rbuttonBit)){// right
+        }else if(RightButtonPressed) {
              p=p+1;
             if(p==12)p=0;
-        }else if(!(buttonState&mbuttonBit)){// middle
+        }else if(MiddleButtonPressed) {
              if(p==11){  //cancel selected
                 LCD::LcdCommandWrite(B00001100);
                 return;

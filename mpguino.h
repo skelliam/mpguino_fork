@@ -65,6 +65,10 @@ typedef void (* pFunc)(void);//type for display function pointers
 
 /* --- Macros ------------------------------------------------ */
 
+#define LeftButtonPressed        (!(buttonState & lbuttonBit))
+#define RightButtonPressed       (!(buttonState & rbuttonBit))
+#define MiddleButtonPressed      (!(buttonState & mbuttonBit))
+
 #define MIN(value1, value2)\
     (((value1) >= (value2)) ? (value2) : (value1))
 
@@ -85,11 +89,11 @@ static char LCDBUF1[bufsize];
 static char LCDBUF2[bufsize];
 
 #if (CFG_IDLE_MESSAGE != 0)
-unsigned char IDLE_DISPLAY_DELAY;
+signed char IDLE_DISPLAY_DELAY;
 #endif
 
 #if (CFG_FUELCUT_INDICATOR != 0)
-unsigned char fcut_pos;
+unsigned char FCUT_POS;
   #if (CFG_FUELCUT_INDICATOR == 2)
   /* XXX: With the Newhaven LCD, there is no backslash (character 0x5C)...
    * the backslash was replaced with the Yen currency symbol.  Other LCDs
