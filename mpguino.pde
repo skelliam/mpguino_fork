@@ -476,13 +476,24 @@ void loop (void) {
            && (instant.var[Trip::vssPulses] == 0) 
          ) 
       {
+         /* the intention of the below logic is to avoid the display flipping 
+            in stop and go traffic.  When you come to a stop, the delay timer 
+            starts incrementing.  When you drive off, it decrements.  When the
+            timer is zero, the display is always at the user-specified screen */
          if (IDLE_DISPLAY_DELAY < 6) {
+            /* count up until delay time is reached */
             IDLE_DISPLAY_DELAY++;
          }
       }
       else {
          if (IDLE_DISPLAY_DELAY > 0) {
+            /* count from delay time back down to zero */
             IDLE_DISPLAY_DELAY--;
+         }
+         else if (IDLE_DISPLAY_DELAY < 0) {
+            /* if the user selected a new screen while stopped, reset 
+               the delay timer after driveoff */
+            IDLE_DISPLAY_DELAY = 0;
          }
       }
 
