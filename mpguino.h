@@ -22,6 +22,7 @@
 
 
 //Vehicle Interface Pins      
+//#define NC                                   1
 #define InjectorOpenPin                        2      
 #define InjectorClosedPin                      3      
 //LCD Pins      
@@ -31,11 +32,13 @@
 #define DB4Pin                                 7       
 #define DB5Pin                                 8       
 #define BrightnessPin                          9      
-
+//#define NC                                  10
+//#define NC                                  11
 #define DB6Pin                                12       
 #define DB7Pin                                13      
 #define VSSPin                                14 //analog 0      
-
+//#define NC                                  15
+//#define NC                                  16
 #define lbuttonPin                            17  // Left Button, on analog 3
 #define mbuttonPin                            18  // Middle Button, on analog 4
 #define rbuttonPin                            19  // Right Button, on analog 5
@@ -78,6 +81,10 @@ typedef void (* pFunc)(void);//type for display function pointers
 #define length(x) (sizeof x / sizeof *x)
 
 #define looptime 1000000ul/loopsPerSecond /* 0.5 second */
+
+#if (CFG_IDLE_MESSAGE == 1)
+#define IdleDisplayRequested     (IDLE_DISPLAY_DELAY > 0)
+#endif
 
 /* --- Globals ----------------------------------------------- */
 

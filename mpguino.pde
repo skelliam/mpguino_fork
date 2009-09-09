@@ -486,7 +486,7 @@ void loop (void) {
          }
       }
       else {
-         if (IDLE_DISPLAY_DELAY > 0) {
+         if (IdleDisplayRequested) {
             /* count from delay time back down to zero */
             IDLE_DISPLAY_DELAY--;
          }
@@ -497,7 +497,7 @@ void loop (void) {
          }
       }
 
-      if (IDLE_DISPLAY_DELAY > 0) {
+      if (IdleDisplayRequested) {
          doDisplayEOCIdleData();
       }
       else {
@@ -549,6 +549,15 @@ void loop (void) {
          current.reset();      
          LCD::print(getStr(PSTR("Current Reset ")));      
       }
+      #if (CFG_IDLE_MESSAGE == 1)
+      else if ((LeftButtonPressed || RightButtonPressed) && (IdleDisplayRequested)) {
+         /* if the idle display is up and the user hits the left or right button,
+          * intercept this press (nonoe of the elseifs will be hit below) 
+          * only in this circumstance and get out of the idle display for a while.
+          * This will return the user to his default screen. */
+         IDLE_DISPLAY_DELAY = -60;
+      }
+      #endif
       else if (LeftButtonPressed) {
          // left is rotate through screeens to the left      
          if (SCREEN!=0) {
@@ -572,15 +581,19 @@ void loop (void) {
          SCREEN=(SCREEN+1)%displayFuncSize;      
          LCD::print(getStr(displayFuncNames[SCREEN]));      
       }      
+
       #if (CFG_IDLE_MESSAGE == 1)
       if (LeftButtonPressed || RightButtonPressed) {
-         /* When the user wants to change screens, avoid the idle screen for a while */
+         /* When the user wants to change screens, continue to 
+          * avoid the idle screen for a while */
          IDLE_DISPLAY_DELAY = -60;
       }
       #endif
+
       if (buttonState!=buttonsUp) {
          HOLD_DISPLAY = 1;
       }
+
    }  /* if (HOLD_DISPLAY == 0) */
    else {
       HOLD_DISPLAY = 0;
