@@ -9,6 +9,7 @@
 #define SLEEP_CFG                  3  /* 0=Off 1=bl (+34) 2=lcd (+14) 3=both (+46)   */
 #define TANK_IN_EEPROM_CFG         1  /* 0=Off 1=On (+34)  */
 #define DTE_CFG                    1  /* 0=Off 1=On        */
+#define OUTSIDE_TEMP_CFG           1  /* 0=Off 1=On        */
 
 /* --- TODO --- */
 #define CFG_UNITS                  1  /* 1=US  2=METRIC  */

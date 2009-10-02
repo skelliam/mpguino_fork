@@ -2,9 +2,15 @@
 //it won't fit with the new math libraries that come with 0012, sorry.
 //GPL Software    
 
+#include "mpguino_conf.h"
+#include <avr/pgmspace.h>
 #include <EEPROM.h>
 #include "mpguino.h"
 #include "lcd.h"
+
+#if (OUTSIDE_TEMP_CFG == 1)
+#include "temperature.h"
+#endif
 
 /* --- Global Variable Declarations -------------------------- */
 
@@ -311,6 +317,7 @@ void setup (void) {
    pinMode(DB5Pin,OUTPUT);       
    pinMode(DB6Pin,OUTPUT);       
    pinMode(DB7Pin,OUTPUT);       
+
    delay2(500);      
 
    pinMode(ContrastPin,OUTPUT);      
@@ -345,6 +352,10 @@ void setup (void) {
    enableRButton();
    PCICR |= (1 << PCIE1);       
 
+   #if (OUTSIDE_TEMP_CFG == 1)
+   INIT_OUTSIDE_TEMP();
+   #endif
+
    delay2(1500);       
 } /* void setup (void) */
  
@@ -362,10 +373,16 @@ void loop (void) {
    }
 
    while (true) {      
+      loopStart = microSeconds();      
+
       #if (CFG_FUELCUT_INDICATOR != 0)
       FCUT_POS = 0;
       #endif
-      loopStart = microSeconds();      
+      
+      #if (OUTSIDE_TEMP_CFG == 1)
+      CALC_FILTERED_TEMP();
+      #endif
+      
       instant.reset();           //clear instant      
       cli();
       instant.update(tmpTrip);   //"copy" of tmpTrip in instant now      
@@ -662,10 +679,15 @@ char *getStr(prog_char * str) {
    return mBuff; 
 } 
 
- 
+#if (OUTSIDE_TEMP_CFG == 1) 
+void doDisplayCustom() { 
+   displayTripCombo('I','m',instantmpg(),'t',OUTSIDE_TEMP_FILT,'G','H',instantgph(),'m',current.mpg());
+}      
+#else
 void doDisplayCustom() { 
    displayTripCombo('I','m',instantmpg(),'s',instantmph(),'G','H',instantgph(),'m',current.mpg());
 }      
+#endif
 
 #if (0)
 void doDisplayCustom() { 
@@ -868,7 +890,6 @@ unsigned long instantmpg(){
   div64(tmp1,tmp2);
   return tmp1[1];
 }
-
 
 unsigned long instantgph(){      
 //  unsigned long vssPulseTimeuS = instant.var[Trip::vssPulseLength]/instant.var[Trip::vssPulses];

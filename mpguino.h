@@ -1,5 +1,3 @@
-#include <avr/pgmspace.h>  
-#include "mpguino_conf.h"
 
 /* --- Constants --------------------------------------------- */
 
@@ -36,7 +34,7 @@
 //#define NC                                  11
 #define DB6Pin                                12       
 #define DB7Pin                                13      
-#define VSSPin                                14 //analog 0      
+#define VSSPin                                14  // analog 0      
 //#define NC                                  15
 //#define NC                                  16
 #define lbuttonPin                            17  // Left Button, on analog 3
@@ -115,9 +113,9 @@ unsigned char FCUT_POS;
 /* The mpg() function call in a Trip class returns an unsigned long.
  * This value can be divided by 1000 in order to get 'true' mpg.
  * This means that an unsigned short int will hold 0xFFFF, or 65535
- * (65.535 MPG).  Since 65.535 is potentially realistic, I propose dropping
- * one decimal of precision in favor of a higher maximum -- 655.35 mpg.
- * This way we can save 20 bytes of memory. */
+ * (65.535 MPG).  Since 65.535 is potentially a realistic value, 
+ * I propose dropping one decimal of precision in favor of a higher 
+ * maximum --> 655.35 mpg. This way we can save 20 bytes of memory. */
 unsigned short PERIODIC_HIST[10];
 unsigned short BAR_LIMIT = 4800;  /* 48 mpg (3 mpg/px) */
 #endif
@@ -189,10 +187,10 @@ class Trip{
      ---- */
 
      //these functions actually return in thousandths,       
-     unsigned long miles();        
+     unsigned long miles();       
      unsigned long gallons();      
-     unsigned long mpg();        
-     unsigned long mph();        
+     unsigned long mpg();          //LSB = 0.001 MPG
+     unsigned long mph(); 
      unsigned long time();         //mmm.ss        
      unsigned long eocMiles();     //how many "free" miles?        
      unsigned long idleGallons();  //how many gallons spent at 0 mph?        
