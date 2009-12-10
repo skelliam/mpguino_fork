@@ -381,6 +381,10 @@ void loop (void) {
       
       #if (OUTSIDE_TEMP_CFG == 1)
       CALC_FILTERED_TEMP();
+      if ((CLOCK % 30)==0) {
+         /* 'HOLD' temp is updated every 30 ticks (15 seconds) */
+         OUTSIDE_TEMP_HOLD=OUTSIDE_TEMP_FILT;
+      }
       #endif
       
       instant.reset();           //clear instant      
@@ -681,7 +685,8 @@ char *getStr(prog_char * str) {
 
 #if (OUTSIDE_TEMP_CFG == 1) 
 void doDisplayCustom() { 
-   displayTripCombo('I','m',instantmpg(),'t',OUTSIDE_TEMP_FILT,'G','H',instantgph(),'m',current.mpg());
+   displayTripCombo('I','m',instantmpg(),'t',OUTSIDE_TEMP_HOLD,
+                    'G','H',instantgph(),'m',current.mpg());
 }      
 #else
 void doDisplayCustom() { 

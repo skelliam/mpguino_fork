@@ -7,12 +7,14 @@
 signed long OUTSIDE_TEMP_RAW;
 signed long OUTSIDE_TEMP_FILT;
 signed long OUTSIDE_TEMP_OLD;
+signed long OUTSIDE_TEMP_HOLD;  /* a value that is updated periodically */
 
 void INIT_OUTSIDE_TEMP() {
    /* initialize all values so we don't have to wait for the filtered value */
    OUTSIDE_TEMP_RAW = READ_RAW_TEMP();
    OUTSIDE_TEMP_FILT = OUTSIDE_TEMP_RAW;
    OUTSIDE_TEMP_OLD = OUTSIDE_TEMP_RAW;
+   OUTSIDE_TEMP_HOLD = OUTSIDE_TEMP_RAW;
 }
 
 /******************************************************
@@ -37,6 +39,14 @@ signed long READ_RAW_TEMP() {
 void CALC_FILTERED_TEMP() {
    OUTSIDE_TEMP_RAW = READ_RAW_TEMP();
    OUTSIDE_TEMP_OLD = OUTSIDE_TEMP_FILT;
-   OUTSIDE_TEMP_FILT += (OUTSIDE_TEMP_RAW-OUTSIDE_TEMP_OLD)/Filter_coeff;
+   if (    ((OUTSIDE_TEMP_RAW-OUTSIDE_TEMP_FILT)> 5000) 
+        || ((OUTSIDE_TEMP_RAW-OUTSIDE_TEMP_FILT)<-5000) ) 
+   {
+      /* if a large delta then reset to the new value */
+      OUTSIDE_TEMP_FILT = OUTSIDE_TEMP_RAW;
+   }
+   else {    
+      OUTSIDE_TEMP_FILT += (OUTSIDE_TEMP_RAW-OUTSIDE_TEMP_OLD)/Filter_coeff;
+   }
 }
 #endif
