@@ -232,9 +232,9 @@ ISR(PCINT1_vect) {
    unsigned char p = PINC;//bypassing digitalRead for interrupt performance      
 
    if ((p & vssBit) != (vsspinstate & vssBit)){      
-      addEvent(enableVSSID,parms[vsspause] ); //check back in a couple milli
+      addEvent(enableVSSID, parms[vsspauseIdx]); //check back in a couple milli
    }
-   if(lastVssFlop != vssFlop){
+   if (lastVssFlop != vssFlop) {
       lastVSS1=lastVSS2;
       unsigned long t = microSeconds();
       lastVSS2=elapsedMicroseconds(lastVSSTime,t);
@@ -754,11 +754,18 @@ void doDisplayBarGraph(void) {
       LCDBUF2[j] = ascii_barmap[MIN(temp,8)];
       j++;
    }
-
-   /* end of line 1: show current mpg */
-   LCDBUF1[8] = ' ';
-   LCDBUF1[9] = 'C';
-   strcpy(&LCDBUF1[10], format(current.mpg()));
+   
+   if (CLOCK & 0x04) {
+      /* end of line 1: show current mpg */
+      LCDBUF1[8] = ' ';
+      LCDBUF1[9] = 'C';
+      strcpy(&LCDBUF1[10], format(current.mpg()));
+   }
+   else {
+      LCDBUF1[8] = ' ';
+      LCDBUF1[9] = '$';
+      strcpy(&LCDBUF1[10], format(current.fuelCost()));
+   }
 
    /* end of line 2: show periodic mpg */
    LCDBUF2[8] = ' ';
@@ -777,9 +784,9 @@ void doDisplayBigDTE(void) {
    unsigned long dte;
    signed long gals_remaining;
    /* TODO: user configurable safety factor see minus zero below */
-   gals_remaining = (parms[tankSizeIdx] - tank.gallons()) - 0;
+   gals_remaining = (parms[tankSizeIdx] - tank.gallons()) - 0;  /* 0.001 gal/bit */
    gals_remaining = MAX(gals_remaining, 0);
-   dte = gals_remaining * (tank.mpg()/100);
+   dte = gals_remaining * (tank.mpg()/100);                     /* mpg() = 0.1 mpg/bit */
    dte /= 10; /* divide by 10 here to avoid precision loss */
    /* dividing a signed long by 10 for some reason adds 100 bytes to program size?
     * otherwise I would've divided gals by 10 earlier! */
@@ -960,8 +967,15 @@ unsigned long  Trip::idleGallons(){
   return tmp1[1];      
 }      
 
-//eocMiles
-//idleGallons
+unsigned long  Trip::fuelCost(){
+  init64(tmp1,0,(Trip::gallons()));  /* 0.001 gal/bit */
+  init64(tmp2,0,parms[fuelcostIdx]); /* 0.01 dollars/bit */
+  mul64(tmp1,tmp2);
+  init64(tmp2,0,100);
+  div64(tmp1,tmp2);
+  return tmp1[1];
+}
+
  
 unsigned long  Trip::mpg(){      
   if(var[Trip::vssPulses]==0) return 0;      
@@ -1090,8 +1104,8 @@ int insert(int *array, int val, size_t size, size_t at)
   
 void save(){
   EEPROM.write(0,guinosig);
-  EEPROM.write(1,length(parms));
-  writeEepBlock32(0x04, &parms[0], length(parms));
+  EEPROM.write(1,parmsCount);
+  writeEepBlock32(0x04, &parms[0], parmsCount);
 }
 
 void writeEepBlock32(unsigned int start_addr, unsigned long *val, unsigned int size) {
@@ -1133,7 +1147,7 @@ unsigned char load(){ //return 1 if loaded ok
     c=9; //before fancy parameter counter
 
   if(b == guinosig || b == guinosigold){
-    readEepBlock32(0x04, &parms[0], length(parms));
+    readEepBlock32(0x04, &parms[0], parmsCount);
     #if (TANK_IN_EEPROM_CFG == 1)
     /* read out the tank variables on boot */
     /* TODO:  eepBlkSize_Tank is appropriate for size? */
@@ -1274,7 +1288,7 @@ void editParm(unsigned char parmIdx){
 }
 
 void initGuino(){ //edit all the parameters
-  for(int x = 0; x<length(parms); x++) {
+  for(int x = 0; x<parmsCount; x++) {
     editParm(x);
   }
   save();
