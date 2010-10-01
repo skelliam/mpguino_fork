@@ -17,7 +17,7 @@
 /* you can OR a memory address with each of the above */
 
 //LCD prototype      
-namespace LCD{      
+namespace LCD {      
   void gotoXY(unsigned char x, unsigned char y);      
   void print(char * string);      
   void init();      

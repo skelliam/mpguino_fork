@@ -13,7 +13,7 @@
 #endif
 
 /* --- Global Variable Declarations -------------------------- */
-
+unsigned char newRun = 0;
 unsigned long MAXLOOPLENGTH = 0;            // see if we are overutilizing the CPU      
 
 //for display computing
@@ -22,7 +22,7 @@ static unsigned long tmp2[2];
 static unsigned long tmp3[2];
 
 #if (CFG_BIGFONT_TYPE == 1)
-  static char chars[] PROGMEM = {
+static char chars[] PROGMEM = {
     B11111, B00000, B11111, B11111, B00000,
     B11111, B00000, B11111, B11111, B00000,
     B11111, B00000, B11111, B11111, B00000,
@@ -30,11 +30,12 @@ static unsigned long tmp3[2];
     B00000, B00000, B00000, B11111, B00000,
     B00000, B11111, B11111, B11111, B01110,
     B00000, B11111, B11111, B11111, B01110,
-    B00000, B11111, B11111, B11111, B01110};
+    B00000, B11111, B11111, B11111, B01110
+};
 #elif (CFG_BIGFONT_TYPE == 2)
   /* XXX: For whatever reason I can not figure out how 
    * to store more than 8 chars in the LCD CGRAM */
-  static char chars[] PROGMEM = {
+static char chars[] PROGMEM = {
     B11111, B00000, B11111, B11111, B00000, B11111, B00111, B11100, 
     B11111, B00000, B11111, B11111, B00000, B11111, B01111, B11110, 
     B00000, B00000, B00000, B11111, B00000, B11111, B11111, B11111, 
@@ -42,12 +43,13 @@ static unsigned long tmp3[2];
     B00000, B00000, B00000, B11111, B00000, B11111, B11111, B11111, 
     B00000, B00000, B00000, B11111, B01110, B11111, B11111, B11111,
     B00000, B11111, B11111, B01111, B01110, B11110, B11111, B11111,
-    B00000, B11111, B11111, B00111, B01110, B11100, B11111, B11111};
+    B00000, B11111, B11111, B00111, B01110, B11100, B11111, B11111
+};
 #endif
 
 #if (BARGRAPH_DISPLAY_CFG == 1)
-  const unsigned char LcdBarChars = 7;
-  static char barchars[] PROGMEM = {
+const unsigned char LcdBarChars = 7;
+static char barchars[] PROGMEM = {
     B00000, B00000, B00000, B00000, B00000, B00000, B00000, 
     B00000, B00000, B00000, B00000, B00000, B00000, B11111, 
     B00000, B00000, B00000, B00000, B00000, B11111, B11111, 
@@ -55,30 +57,31 @@ static unsigned long tmp3[2];
     B00000, B00000, B00000, B11111, B11111, B11111, B11111, 
     B00000, B00000, B11111, B11111, B11111, B11111, B11111, 
     B00000, B11111, B11111, B11111, B11111, B11111, B11111, 
-    B11111, B11111, B11111, B11111, B11111, B11111, B11111};
+    B11111, B11111, B11111, B11111, B11111, B11111, B11111
+};
 
   /* map numbers to bar segments.  Example:
    * ascii_barmap[10] --> all eight segments filled in
    * ascii_barmap[4]  --> four segments filled in */
-  char ascii_barmap[] = {0x20, 0x01, 0x02, 0x03, 0x04, 0x05, 
-                         0x06, 0x07, 0xFF, 0xFF, 0xFF}; 
+char ascii_barmap[] = {0x20, 0x01, 0x02, 0x03, 0x04, 0x05, 
+                       0x06, 0x07, 0xFF, 0xFF, 0xFF}; 
 #endif
 
 #if (CFG_BIGFONT_TYPE == 1)
-   /* 32 = 0x20 = space */
-   const unsigned char LcdNewChars = 5;
-   char bignumchars1[]={4,1,4,0, 1,4,32,0, 3,3,4,0, 1,3,4,0, 4,2,4,0, 
-                        4,3,3,0,  4,3,3,0, 1,1,4,0, 4,3,4,0, 4,3,4,0}; 
-   char bignumchars2[]={4,2,4,0, 2,4,2,0,   4,2,2,0, 2,2,4,0, 32,32,4,0, 
-                        2,2,4,0, 4,2,4,0, 32,4,32,0, 4,2,4,0,   2,2,4,0};  
+/* 32 = 0x20 = space */
+const unsigned char LcdNewChars = 5;
+char bignumchars1[]={4,1,4,0, 1,4,32,0, 3,3,4,0, 1,3,4,0, 4,2,4,0, 
+                     4,3,3,0,  4,3,3,0, 1,1,4,0, 4,3,4,0, 4,3,4,0}; 
+char bignumchars2[]={4,2,4,0, 2,4,2,0,   4,2,2,0, 2,2,4,0, 32,32,4,0, 
+                     2,2,4,0, 4,2,4,0, 32,4,32,0, 4,2,4,0,   2,2,4,0};  
 #elif (CFG_BIGFONT_TYPE == 2)
-   /* 32 = 0x20 = space */
-   /* 255 = 0xFF = all black character */
-   const unsigned char LcdNewChars = 8;
-   char bignumchars1[]={  7,1,8,0,  1,255,32,0,   3,3,8,0, 1,3,8,0, 255,2,255,0,  
-                        255,3,3,0,     7,3,3,0,   1,1,6,0, 7,3,8,0,     7,3,8,0};
-   char bignumchars2[]={  4,2,6,0, 32,255,32,0, 255,2,2,0, 2,2,6,0, 32,32,255,0,
-                          2,2,6,0,     4,2,6,0, 32,7,32,0, 4,2,6,0,     2,2,6,0};
+/* 32 = 0x20 = space */
+/* 255 = 0xFF = all black character */
+const unsigned char LcdNewChars = 8;
+char bignumchars1[]={  7,1,8,0,  1,255,32,0,   3,3,8,0, 1,3,8,0, 255,2,255,0,  
+                     255,3,3,0,     7,3,3,0,   1,1,6,0, 7,3,8,0,     7,3,8,0};
+char bignumchars2[]={  4,2,6,0, 32,255,32,0, 255,2,2,0, 2,2,6,0, 32,32,255,0,
+                       2,2,6,0,     4,2,6,0, 32,7,32,0, 4,2,6,0,     2,2,6,0};
 #endif
 
 //middle button cycles through these brightness settings      
@@ -88,6 +91,11 @@ unsigned char brightnessIdx=1;
 #define brightnessLength (sizeof(brightness)/sizeof(unsigned char)) //array size
 
 volatile unsigned long timer2_overflow_count;
+volatile boolean vssFlop = 0;
+unsigned volatile long lastVSS1;
+unsigned volatile long lastVSSTime;
+unsigned volatile long lastVSS2;
+volatile boolean lastVssFlop = vssFlop;
 
 /* --- End Global Variable Declarations ---------------------- */
 
@@ -101,19 +109,30 @@ The milliseconds is approximate.
 Keep the event functions SMALL!!!  This is an interrupt!
 
 */
-//event functions
 
-void enableLButton(){PCMSK1 |= (1 << PCINT11);}
-void enableMButton(){PCMSK1 |= (1 << PCINT12);}
-void enableRButton(){PCMSK1 |= (1 << PCINT13);}
+//event functions
+void enableLButton(){
+   PCMSK1 |= (1 << PCINT11);
+}
+
+void enableMButton(){
+   PCMSK1 |= (1 << PCINT12);
+}
+
+void enableRButton(){
+   PCMSK1 |= (1 << PCINT13);
+}
+
+void enableVSS(){
+   /*  tmpTrip.var[Trip::vssPulses]++;  */
+   vssFlop = !vssFlop;
+}
+
 //array of the event functions
-pFunc eventFuncs[] ={enableVSS, enableLButton,enableMButton,enableRButton};
+pFunc eventFuncs[] ={enableVSS, enableLButton, enableMButton, enableRButton};
+
 #define eventFuncSize (sizeof(eventFuncs)/sizeof(pFunc)) 
-//define the event IDs
-#define enableVSSID 0
-#define enableLButtonID 1
-#define enableMButtonID 2
-#define enableRButtonID 3
+
 //ms counters
 unsigned int eventFuncCounts[eventFuncSize];
 
@@ -148,6 +167,7 @@ unsigned char buttonState = buttonsUp;
  
 //overflow counter used by millis2()      
 unsigned long lastMicroSeconds=millis2() * 1000;   
+
 unsigned long microSeconds(void) {     
    unsigned long tmp_timer2_overflow_count;    
    unsigned long tmp;    
@@ -219,18 +239,6 @@ void processInjClosed(void){
    tmpInstInjEnd = t;
 }
 
-volatile boolean vssFlop = 0;
-
-void enableVSS(){
-   /*  tmpTrip.var[Trip::vssPulses]++;  */
-   vssFlop = !vssFlop;
-}
-
-unsigned volatile long lastVSS1;
-unsigned volatile long lastVSSTime;
-unsigned volatile long lastVSS2;
-
-volatile boolean lastVssFlop = vssFlop;
 
 //attach the vss/buttons interrupt      
 ISR(PCINT1_vect) {   
@@ -276,22 +284,23 @@ pFunc displayFuncs[] ={
 #define displayFuncSize (sizeof(displayFuncs)/sizeof(pFunc)) //array size      
 
 prog_char  * displayFuncNames[displayFuncSize]; 
-unsigned char newRun = 0;
 
-void setup (void) {
+
+void setupDisplayPins(void) {
+   pinMode(BrightnessPin,OUTPUT);      
+   analogWrite(BrightnessPin,brightness[brightnessIdx]);      
+   pinMode(EnablePin,OUTPUT);       
+   pinMode(DIPin,OUTPUT);       
+   pinMode(DB4Pin,OUTPUT);       
+   pinMode(DB5Pin,OUTPUT);       
+   pinMode(DB6Pin,OUTPUT);       
+   pinMode(DB7Pin,OUTPUT);       
+   pinMode(ContrastPin,OUTPUT);      
+   delay2(500);      
+}
+
+void setupDisplayFuncNames(void) {
    unsigned char x = 0;
-
-   CLOCK = 0;
-   SCREEN = 0;
-   HOLD_DISPLAY = 0;
-
-   #if (CFG_IDLE_MESSAGE != 0)
-   IDLE_DISPLAY_DELAY = 0;
-   #endif
-
-   init2();
-   newRun = load();//load the default parameters
-
    displayFuncNames[x++]=  PSTR("Custom  "); 
    displayFuncNames[x++]=  PSTR("Instant/Current "); 
    displayFuncNames[x++]=  PSTR("Instant/Tank "); 
@@ -308,23 +317,32 @@ void setup (void) {
    #if (DTE_CFG == 1)
    displayFuncNames[x++]=  PSTR("BIG DTE ");
    #endif
+}
 
-   pinMode(BrightnessPin,OUTPUT);      
-   analogWrite(BrightnessPin,brightness[brightnessIdx]);      
-   pinMode(EnablePin,OUTPUT);       
-   pinMode(DIPin,OUTPUT);       
-   pinMode(DB4Pin,OUTPUT);       
-   pinMode(DB5Pin,OUTPUT);       
-   pinMode(DB6Pin,OUTPUT);       
-   pinMode(DB7Pin,OUTPUT);       
-
-   delay2(500);      
-
-   pinMode(ContrastPin,OUTPUT);      
+void setupDisplayInit(void) {
    analogWrite(ContrastPin,parms[contrastIdx]);  
    LCD::init();      
    LCD::LcdCommandWrite(LCD_ClearDisplay);            // clear display, set cursor position to zero         
    LCD::LcdCommandWrite(LCD_SetDDRAM);                // set dram to zero
+}
+
+void setup (void) {
+   CLOCK = 0;
+   SCREEN = 0;
+   HOLD_DISPLAY = 0;
+
+   #if (CFG_IDLE_MESSAGE != 0)
+   IDLE_DISPLAY_DELAY = 0;
+   #endif
+
+   init2();
+   newRun = load();//load the default parameters
+
+   setupDisplayFuncNames();
+   setupDisplayPins();
+   setupDisplayInit();
+
+   /* splash screen */
    LCD::print(getStr(PSTR("OpenGauge       ")));      
    LCD::gotoXY(0,1);      
    LCD::print(getStr(PSTR("  MPGuino v0.75S")));
@@ -611,7 +629,7 @@ void loop (void) {
       }
       #endif
 
-      if (buttonState!=buttonsUp) {
+      if (buttonState != buttonsUp) {
          HOLD_DISPLAY = 1;
       }
 
@@ -1099,38 +1117,41 @@ void bigNum (unsigned long t, char * txt1, char * txt2){
 
 int insert(int *array, int val, size_t size, size_t at)
 {
-  size_t i;
+   size_t i;
 
-  /* In range? */
-  if (at >= size)
-    return -1;
+   /* In range? */
+   if (at >= size) {
+      return -1;
+   }
 
-  /* Shift elements to make a hole */
-  for (i = size - 1; i > at; i--)
-    array[i] = array[i - 1];
-  /* Insertion! */
-  array[at] = val;
+   /* Shift elements to make a hole */
+   for (i = size - 1; i > at; i--) {
+      array[i] = array[i - 1];
+   }
 
-  return 0;
+   /* Insertion! */
+   array[at] = val;
+
+   return 0;
 }
   
 void save(){
-  EEPROM.write(0,guinosig);
-  EEPROM.write(1,length(parms));
-  writeEepBlock32(0x04, &parms[0], length(parms));
+   EEPROM.write(0,guinosig);
+   EEPROM.write(1,length(parms));
+   writeEepBlock32(0x04, &parms[0], length(parms));
 }
 
 void writeEepBlock32(unsigned int start_addr, unsigned long *val, unsigned int size) {
-  unsigned char p = 0;
-  unsigned char shift = 0;
-  int i = 0;
-  for(start_addr; p < size; start_addr+=4) {
-    for (i=0; i<4; i++) {
-      shift = (8 * (3-i));  /* 24, 16, 8, 0 */
-      EEPROM.write(start_addr + i, (val[p]>>shift) & 0xFF);
-    }
-    p++;
-  }
+   unsigned char p = 0;
+   unsigned char shift = 0;
+   int i = 0;
+   for(start_addr; p < size; start_addr+=4) {
+      for (i=0; i<4; i++) {
+         shift = (8 * (3-i));  /* 24, 16, 8, 0 */
+         EEPROM.write(start_addr + i, (val[p]>>shift) & 0xFF);
+      }
+      p++;
+   }
 }
 
 void readEepBlock32(unsigned int start_addr, unsigned long *val, unsigned int size) {
@@ -1149,48 +1170,48 @@ void readEepBlock32(unsigned int start_addr, unsigned long *val, unsigned int si
    }
 }
 
-unsigned char load(){ //return 1 if loaded ok
-  #ifdef usedefaults
-    return 1;
-  #endif
-  unsigned char b = EEPROM.read(0);
-  unsigned char c = EEPROM.read(1);
-  if(b == guinosigold)
-    c=9; //before fancy parameter counter
+unsigned char load() { //return 1 if loaded ok
+   #ifdef usedefaults
+   return 1;
+   #endif
+   unsigned char b = EEPROM.read(0);
+   unsigned char c = EEPROM.read(1);
+   if(b == guinosigold)
+      c=9; //before fancy parameter counter
 
-  if(b == guinosig || b == guinosigold){
-    readEepBlock32(0x04, &parms[0], length(parms));
-    #if (TANK_IN_EEPROM_CFG == 1)
-    /* read out the tank variables on boot */
-    /* TODO:  eepBlkSize_Tank is appropriate for size? */
-    readEepBlock32(eepBlkAddr_Tank, &tank.var[0], eepBlkSize_Tank);  
-    #endif
-    return 1;
-  }
-  return 0;
+   if(b == guinosig || b == guinosigold){
+      readEepBlock32(0x04, &parms[0], length(parms));
+      #if (TANK_IN_EEPROM_CFG == 1)
+      /* read out the tank variables on boot */
+      /* TODO:  eepBlkSize_Tank is appropriate for size? */
+      readEepBlock32(eepBlkAddr_Tank, &tank.var[0], eepBlkSize_Tank);  
+      #endif
+      return 1;
+   }
+   return 0;
 }
 
 char * uformat(unsigned long val){ 
-  static char mBuff[17];
-  unsigned long d = 1000000000ul;
-  unsigned char p;
-  for(p = 0; p < 10 ; p++){
-    mBuff[p]='0' + (val/d);
-    val=val-(val/d*d);
-    d/=10;
-  }
-  mBuff[10]=0;
-  return mBuff;
+   static char mBuff[17];
+   unsigned long d = 1000000000ul;
+   unsigned char p;
+   for(p = 0; p < 10 ; p++){
+      mBuff[p]='0' + (val/d);
+      val=val-(val/d*d);
+      d/=10;
+   }
+   mBuff[10]=0;
+   return mBuff;
 } 
 
 unsigned long rformat(char * val){ 
-  unsigned long d = 1000000000ul;
-  unsigned long v = 0ul;
-  for(unsigned char p = 0; p < 10 ; p++){
-    v=v+(d*(val[p]-'0'));
-    d/=10;
-  }
-  return v;
+   unsigned long d = 1000000000ul;
+   unsigned long v = 0ul;
+   for(unsigned char p = 0; p < 10 ; p++){
+      v=v+(d*(val[p]-'0'));
+      d/=10;
+   }
+   return v;
 } 
 
 
@@ -1199,6 +1220,7 @@ void editParm(unsigned char parmIdx){
    unsigned char p=9;  //right end of 10 digit number
    unsigned char keyLock=1;    
    char *fmtv = uformat(v);
+   unsigned char n;
 
    /* -- line 1 -- */
    strcpy(&LCDBUF1[0], parmLabels[parmIdx]);
@@ -1230,28 +1252,30 @@ void editParm(unsigned char parmIdx){
    (parmIdx == contrastIdx) ? p=8 : p=11;  
 #endif
 
-  while(true){
+   while (true) {
+      if (p<10)
+         LCD::gotoXY(p,1);   
+      if (p==10)     
+         LCD::gotoXY(11,1);   
+      if (p==11)     
+         LCD::gotoXY(14,1);   
 
-    if(p<10)
-      LCD::gotoXY(p,1);   
-    if(p==10)     
-      LCD::gotoXY(11,1);   
-    if(p==11)     
-      LCD::gotoXY(14,1);   
-
-     if(keyLock == 0) { 
-        if (LeftButtonPressed && RightButtonPressed) {
-            if (p<10)
+      if (keyLock == 0) { 
+         if (LeftButtonPressed && RightButtonPressed) {
+            if (p<10) {
                p=10;
-            else if (p==10) 
+            }
+            else if (p==10)  {
                p=11;
+            }
 #if (CFG_NICE_CURSOR)
             //do a nice thing and put the cursor at the first non zero number
-            else{
-              for(int x=9 ; x>=0 ;x--){ 
-                if(fmtv[x] != '0')
-               p=x; 
-              }
+            else {
+               for(int x=9 ; x>=0 ;x--) { 
+                  if (fmtv[x] != '0') {
+                     p=x; 
+                  }
+               }
             }
 #else
             else {
@@ -1259,52 +1283,66 @@ void editParm(unsigned char parmIdx){
                (parmIdx == contrastIdx) ? p=8 : p=11;  
             }
 #endif
-        }else if (LeftButtonPressed) {
-            p=p-1;
-            if(p==255)p=11;
-        }else if(RightButtonPressed) {
-             p=p+1;
-            if(p==12)p=0;
-        }else if(MiddleButtonPressed) {
-             if(p==11){  //cancel selected
-                LCD::LcdCommandWrite(B00001100);
-                return;
-             }
-             if(p==10){  //ok selected
-                LCD::LcdCommandWrite(B00001100);
-                parms[parmIdx]=rformat(fmtv);
-                return;
-             }
-             
-             unsigned char n = fmtv[p]-'0';
-             n++;
-             if (n > 9) n=0;
-             if(p==0 && n > 3) n=0;
-             fmtv[p]='0'+ n;
-             LCD::gotoXY(0,1);        
-             LCD::print(fmtv);
-             LCD::gotoXY(p,1);        
-             if(parmIdx==contrastIdx)//adjust contrast dynamically
-                 analogWrite(ContrastPin,rformat(fmtv));  
-        }
+         }
+         else if (LeftButtonPressed) {
+            p = p-1;
+            if (p==255) {
+               p=11;
+            }
+         }
+         else if (RightButtonPressed) {
+            p = p+1;
+            if (p==12) {
+               p=0;
+            }
+         }
+         else if (MiddleButtonPressed) {
+            if (p==11) {  //cancel selected
+               LCD::LcdCommandWrite(B00001100);
+               return;
+            }
 
-      if(buttonState!=buttonsUp)
-         keyLock=1;
-     }else{
-        keyLock=0;
-     }
+            if (p==10) {  //ok selected
+               LCD::LcdCommandWrite(B00001100);
+               parms[parmIdx]=rformat(fmtv);
+               return;
+            }
+             
+            n = fmtv[p]-'0';
+            n++;
+            if (n > 9) n=0;
+            if (p==0 && n > 3) n=0;
+            fmtv[p]='0'+ n;
+            LCD::gotoXY(0,1);        
+            LCD::print(fmtv);
+            LCD::gotoXY(p,1);        
+
+            //adjust contrast dynamically
+            if (parmIdx==contrastIdx) {
+                analogWrite(ContrastPin, rformat(fmtv));  
+            }
+         }
+
+         if (buttonState!=buttonsUp) {
+            keyLock=1;
+         }
+      }  /* if (keyLock == 0) */
+      else {
+         keyLock=0;
+      }
+
       buttonState=buttonsUp;
       delay2(125);
-  }      
-  
-}
+
+   }  /* while (true) */
+} /* void editParm(unsigned char parmIdx) */
 
 void initGuino(){ //edit all the parameters
-  for(int x = 0; x<length(parms); x++) {
-    editParm(x);
-  }
-  save();
-  HOLD_DISPLAY=1;
+   for(int x = 0; x<length(parms); x++) {
+      editParm(x);
+   }
+   save();
+   HOLD_DISPLAY=1;
 }  
 
 unsigned long millis2(){
@@ -1361,16 +1399,16 @@ void init2(){
 
 #if (CFG_SERIAL_TX == 1)
 void simpletx( char * string ){
- if (UCSR0B != (1<<TXEN0)){ //do we need to init the uart?
-    UBRR0H = (unsigned char)(myubbr>>8);
-    UBRR0L = (unsigned char)myubbr;
-    UCSR0B = (1<<TXEN0);//Enable transmitter
-    UCSR0C = (3<<UCSZ00);//N81
- }
- while (*string)
- {
-   while ( !( UCSR0A & (1<<UDRE0)) );
-   UDR0 = *string++; //send the data
- }
+   if (UCSR0B != (1<<TXEN0)){ //do we need to init the uart?
+      UBRR0H = (unsigned char)(myubbr>>8);
+      UBRR0L = (unsigned char)myubbr;
+      UCSR0B = (1<<TXEN0);//Enable transmitter
+      UCSR0C = (3<<UCSZ00);//N81
+   }
+   while (*string)
+   {
+      while ( !( UCSR0A & (1<<UDRE0)) );
+      UDR0 = *string++; //send the data
+   }
 }
 #endif

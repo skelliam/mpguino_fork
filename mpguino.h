@@ -59,6 +59,17 @@
 /* --- Enums ------------------------------------------------- */
 
 enum displayTypes {dtText=0, dtBigChars, dtBarGraph};
+enum eventID { enableVSSID=0, enableLButtonID, enableMButtonID, enableRButtonID };
+enum longparms { contrastIdx=0, 
+                 vssPulsesPerMileIdx, 
+                 microSecondsPerGallonIdx, 
+                 injPulsesPer2Revolutions, 
+                 currentTripResetTimeoutUSIdx, 
+                 tankSizeIdx, 
+                 injectorSettleTimeIdx, 
+                 weightIdx, 
+                 scratchpadIdx, 
+                 vsspause };
 
 /* --- Typedefs ---------------------------------------------- */
 
@@ -120,16 +131,7 @@ unsigned short PERIODIC_HIST[10];
 unsigned short BAR_LIMIT = 4800;  /* 48 mpg (3 mpg/px) */
 #endif
 
-enum longparms { contrastIdx=0, 
-                 vssPulsesPerMileIdx, 
-                 microSecondsPerGallonIdx, 
-                 injPulsesPer2Revolutions, 
-                 currentTripResetTimeoutUSIdx, 
-                 tankSizeIdx, 
-                 injectorSettleTimeIdx, 
-                 weightIdx, 
-                 scratchpadIdx, 
-                 vsspause };
+
 
 /* default values */
 unsigned long parms[]={
