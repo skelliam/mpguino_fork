@@ -466,162 +466,181 @@ void loop (void) {
       }
        
 
-   if (HOLD_DISPLAY == 0) {
+      if (HOLD_DISPLAY == 0) {
 
-      #if (CFG_IDLE_MESSAGE == 0)
-      displayFuncs[SCREEN]();    //call the appropriate display routine      
-      #elif (CFG_IDLE_MESSAGE == 1)
-      /* --- during idle, jump to EOC information */
-      if (    (instant.var[Trip::injPulses] >  0) 
-           && (instant.var[Trip::vssPulses] == 0) 
-         ) 
-      {
-         /* the intention of the below logic is to avoid the display flipping 
-            in stop and go traffic.  When you come to a stop, the delay timer 
-            starts incrementing.  When you drive off, it decrements.  When the
-            timer is zero, the display is always at the user-specified screen */
-         if (IDLE_DISPLAY_DELAY < 6) {
-            /* count up until delay time is reached */
-            IDLE_DISPLAY_DELAY++;
-         }
-      }
-      else {
-         if (IdleDisplayRequested) {
-            /* count from delay time back down to zero */
-            IDLE_DISPLAY_DELAY--;
-         }
-         else if (IDLE_DISPLAY_DELAY < 0) {
-            /* if the user selected a new screen while stopped, reset 
-               the delay timer after driveoff */
-            IDLE_DISPLAY_DELAY = 0;
-         }
-      }
-
-      if (IdleDisplayRequested) {
-         doDisplayEOCIdleData();
-      }
-      else {
-         displayFuncs[SCREEN]();
-      }
-      #endif
-
-      #if (CFG_FUELCUT_INDICATOR != 0)
-      /* --- insert visual indication that fuel cut is happening */
-      if (    (instant.var[Trip::injPulses] == 0) 
-           && (instant.var[Trip::vssPulses] >  0) 
-         ) 
-      {
-         #if (CFG_FUELCUT_INDICATOR == 1)
-         LCDBUF1[FCUT_POS] = 'x';
-         #elif ((CFG_FUELCUT_INDICATOR == 2) || (CFG_FUELCUT_INDICATOR == 3))
-         LCDBUF1[FCUT_POS] = spinner[CLOCK & 0x03];
-         #endif
-      }
-      #endif
-
-      /* --- ensure that we have terminating nulls */
-      LCDBUF1[16] = 0;
-      LCDBUF2[16] = 0;
-
-      /* print line 1 */
-      LCD::LcdCommandWrite(LCD_ReturnHome);
-      LCD::print(LCDBUF1);
-
-      /* print line 2 */
-      LCD::gotoXY(0,1);
-      LCD::print(LCDBUF2);
-
-      LCD::LcdCommandWrite(LCD_ReturnHome);
-
-      /* --- see if any buttons were pressed, display a brief message if so --- */
-      if (LeftButtonPressed && RightButtonPressed) {
-         // left and right = initialize      
-         LCD::print(getStr(PSTR("Setup ")));    
-         initGuino();  
-      }
-      else if (LeftButtonPressed && MiddleButtonPressed) {
-         // left and middle = tank reset      
-         tank.reset();      
-         LCD::print(getStr(PSTR("Tank Reset ")));      
-      }
-      else if (MiddleButtonPressed && RightButtonPressed) {
-         // right and middle = current reset      
-         current.reset();      
-         LCD::print(getStr(PSTR("Current Reset ")));      
-      }
-      #if (CFG_IDLE_MESSAGE == 1)
-      else if ((LeftButtonPressed || RightButtonPressed) && (IdleDisplayRequested)) {
-         /* if the idle display is up and the user hits the left or right button,
-          * intercept this press (nonoe of the elseifs will be hit below) 
-          * only in this circumstance and get out of the idle display for a while.
-          * This will return the user to his default screen. */
-         IDLE_DISPLAY_DELAY = -60;
-      }
-      #endif
-      else if (LeftButtonPressed) {
-         // left is rotate through screeens to the left      
-         if (SCREEN!=0) {
-             SCREEN = (SCREEN-1);       
+         #if (CFG_IDLE_MESSAGE == 0)
+         displayFuncs[SCREEN]();    //call the appropriate display routine      
+         #elif (CFG_IDLE_MESSAGE == 1)
+         /* --- during idle, jump to EOC information */
+         if (    (instant.var[Trip::injPulses] >  0) 
+              && (instant.var[Trip::vssPulses] == 0) 
+            ) 
+         {
+            /* the intention of the below logic is to avoid the display flipping 
+               in stop and go traffic.  When you come to a stop, the delay timer 
+               starts incrementing.  When you drive off, it decrements.  When the
+               timer is zero, the display is always at the user-specified screen */
+            if (IDLE_DISPLAY_DELAY < 6) {
+               /* count up until delay time is reached */
+               IDLE_DISPLAY_DELAY++;
+            }
          }
          else {
-            SCREEN=displayFuncSize-1;      
+            if (IdleDisplayRequested) {
+               /* count from delay time back down to zero */
+               IDLE_DISPLAY_DELAY--;
+            }
+            else if (IDLE_DISPLAY_DELAY < 0) {
+               /* if the user selected a new screen while stopped, reset 
+                  the delay timer after driveoff */
+               IDLE_DISPLAY_DELAY = 0;
+            }
          }
-         LCD::print(getStr(displayFuncNames[SCREEN]));      
+
+         if (IdleDisplayRequested) {
+            doDisplayEOCIdleData();
+         }
+         else {
+            displayFuncs[SCREEN]();
+         }
+         #endif
+
+         #if (CFG_FUELCUT_INDICATOR != 0)
+         /* --- insert visual indication that fuel cut is happening */
+         if (    (instant.var[Trip::injPulses] == 0) 
+              && (instant.var[Trip::vssPulses] >  0) 
+            ) 
+         {
+            #if (CFG_FUELCUT_INDICATOR == 1)
+            LCDBUF1[FCUT_POS] = 'x';
+            #elif ((CFG_FUELCUT_INDICATOR == 2) || (CFG_FUELCUT_INDICATOR == 3))
+            LCDBUF1[FCUT_POS] = spinner[CLOCK & 0x03];
+            #endif
+         }
+         #endif
+
+         /* --- ensure that we have terminating nulls */
+         LCDBUF1[16] = 0;
+         LCDBUF2[16] = 0;
+
+         /* print line 1 */
+         LCD::LcdCommandWrite(LCD_ReturnHome);
+         LCD::print(LCDBUF1);
+
+         /* print line 2 */
+         LCD::gotoXY(0,1);
+         LCD::print(LCDBUF2);
+
+         LCD::LcdCommandWrite(LCD_ReturnHome);
+
+         /* --- see if any buttons were pressed, display a brief message if so --- */
+         if (LeftButtonPressed && RightButtonPressed) {
+            // left and right = initialize      
+            LCD::print(getStr(PSTR("Setup ")));    
+            initGuino();  
+         }
+         else if (LeftButtonPressed && MiddleButtonPressed) {
+            // left and middle = tank reset      
+            tank.reset();      
+            LCD::print(getStr(PSTR("Tank Reset ")));      
+         }
+         else if (MiddleButtonPressed && RightButtonPressed) {
+            // right and middle = current reset      
+            current.reset();      
+            LCD::print(getStr(PSTR("Current Reset ")));      
+         }
+         #if (CFG_IDLE_MESSAGE == 1)
+         else if ((LeftButtonPressed || RightButtonPressed) && (IdleDisplayRequested)) {
+            /* if the idle display is up and the user hits the left or right button,
+             * intercept this press (nonoe of the elseifs will be hit below) 
+             * only in this circumstance and get out of the idle display for a while.
+             * This will return the user to his default screen. */
+            IDLE_DISPLAY_DELAY = -60;
+         }
+         #endif
+         else if (LeftButtonPressed) {
+            // left is rotate through screeens to the left      
+            if (SCREEN!=0) {
+                SCREEN = (SCREEN-1);       
+            }
+            else {
+               SCREEN=displayFuncSize-1;      
+            }
+            LCD::print(getStr(displayFuncNames[SCREEN]));      
+         }
+         else if (MiddleButtonPressed) {
+            // middle is cycle through brightness settings      
+            brightnessIdx = (brightnessIdx + 1) % brightnessLength;      
+            analogWrite(BrightnessPin,brightness[brightnessIdx]);      
+            LCD::print(getStr(PSTR("Brightness ")));      
+            LCD::LcdDataWrite('0' + brightnessIdx);      
+            LCD::print(" ");      
+         }
+         else if (RightButtonPressed) {
+            // right is rotate through screeens to the left      
+            SCREEN=(SCREEN+1)%displayFuncSize;      
+            LCD::print(getStr(displayFuncNames[SCREEN]));      
+         }      
+
+         #if (CFG_IDLE_MESSAGE == 1)
+         if (LeftButtonPressed || RightButtonPressed) {
+            /* When the user wants to change screens, continue to 
+             * avoid the idle screen for a while */
+            IDLE_DISPLAY_DELAY = -60;
+         }
+         #endif
+
+         if (buttonState!=buttonsUp) {
+            HOLD_DISPLAY = 1;
+         }
+
+      }  /* if (HOLD_DISPLAY == 0) */
+      else {
+         HOLD_DISPLAY = 0;
+      } 
+
+      // reset the buttons      
+      buttonState=buttonsUp;
+       
+      // keep track of how long the loops take before we go int waiting.      
+      MAXLOOPLENGTH = MAX(MAXLOOPLENGTH, elapsedMicroseconds(loopStart));
+
+      while (elapsedMicroseconds(loopStart) < (looptime)) {
+         // wait for the end of the loop to arrive (0.5 sec)
+         continue;
       }
-      else if (MiddleButtonPressed) {
-         // middle is cycle through brightness settings      
-         brightnessIdx = (brightnessIdx + 1) % brightnessLength;      
-         analogWrite(BrightnessPin,brightness[brightnessIdx]);      
-         LCD::print(getStr(PSTR("Brightness ")));      
-         LCD::LcdDataWrite('0' + brightnessIdx);      
-         LCD::print(" ");      
-      }
-      else if (RightButtonPressed) {
-         // right is rotate through screeens to the left      
-         SCREEN=(SCREEN+1)%displayFuncSize;      
-         LCD::print(getStr(displayFuncNames[SCREEN]));      
-      }      
 
-      #if (CFG_IDLE_MESSAGE == 1)
-      if (LeftButtonPressed || RightButtonPressed) {
-         /* When the user wants to change screens, continue to 
-          * avoid the idle screen for a while */
-         IDLE_DISPLAY_DELAY = -60;
-      }
-      #endif
-
-      if (buttonState!=buttonsUp) {
-         HOLD_DISPLAY = 1;
-      }
-
-   }  /* if (HOLD_DISPLAY == 0) */
-   else {
-      HOLD_DISPLAY = 0;
-   } 
-
-   // reset the buttons      
-   buttonState=buttonsUp;
-    
-   // keep track of how long the loops take before we go int waiting.      
-   MAXLOOPLENGTH = MAX(MAXLOOPLENGTH, elapsedMicroseconds(loopStart));
-
-   while (elapsedMicroseconds(loopStart) < (looptime)) {
-      // wait for the end of the loop to arrive (0.5 sec)
-      continue;
-   }
-
-   CLOCK++;
+      CLOCK++;
 
    } /* while (true) */
 } /* loop (void) */
- 
+
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * format:
+ * Take an unsigned long and convert it to a string value that we can display.
+ * The function will always divide the input by 1000 and display the result.
+ * Some examples with output:
+ * 
+ * format(1000)    --> "001.00"
+ * format(123456)  --> "123.46"  (note rounding of last digit)
+ * format(1000000) --> "1000.0"
+ * format(100000)  --> "100.00"
+ *
+ * format(999999)  --> "000.00"  (bug??)
+ * format(999995)  --> "000.00"
+ * format(999994)  --> "999.99"
+ *
+ * Question:  Why doesn't this function require the special 
+ *            unsigned long math?
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
  
 char *format(unsigned long num) {
    static char fBuff[7];  //used by format
    unsigned char dp = 3;
    unsigned char x = 6;
 
-   while (num > 999999) {
+   while (num > 999994) {
       num /= 10;
       dp++;
       if( dp == 5 ) break; /* We'll lose the top numbers like an odometer */
@@ -686,7 +705,12 @@ void doDisplayInstantCurrent() {
 }      
  
 void doDisplayInstantTank() {
-   displayTripCombo('I','m',instantmpg(),'s',instantmph(),'T','m',tank.mpg(),'d',tank.miles());
+   if (CLOCK & 0x04) {
+      displayTripCombo('I','m',instantmpg(),'s',instantmph(),'T','m',tank.mpg(),'d',tank.miles());
+   } 
+   else {
+      displayTripCombo('I','m',instantmpg(),'s',instantmph(),'T','$',tank.fuelCost(),'d',tank.miles());
+   }
 }      
 
 void doDisplayBigInstant() {

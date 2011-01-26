@@ -161,7 +161,7 @@ char *parmLabels[]={
    "Weight (lbs)",
    "Scratchpad(odo?)",
    "VSS Delay ms",
-   "Fuel Cost ($/gal)"
+   "Fuel Cost($/gal)"
 };
 
 /* --- Classes --------------------------------------------- */
