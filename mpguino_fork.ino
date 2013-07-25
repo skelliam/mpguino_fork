@@ -1,19 +1,16 @@
-/* YOU NEED TO USE ARDUINO VERSION 0011 !!!!!!  */
-//it won't fit with the new math libraries that come with 0012, sorry.
-//GPL Software    
-
+#include <WString.h>
 #include <EEPROM.h>
 #include "mpguino.h"
 #include "lcd.h"
 
 /* --- Global Variable Declarations -------------------------- */
 
-unsigned long MAXLOOPLENGTH = 0;            // see if we are overutilizing the CPU      
-
 //for display computing
 static unsigned long tmp1[2];
 static unsigned long tmp2[2];
 static unsigned long tmp3[2];
+
+unsigned long MAXLOOPLENGTH = 0;            // see if we are overutilizing the CPU      
 
 #if (CFG_BIGFONT_TYPE == 1)
   static char chars[] PROGMEM = {
@@ -142,6 +139,7 @@ unsigned char buttonState = buttonsUp;
  
 //overflow counter used by millis2()      
 unsigned long lastMicroSeconds=millis2() * 1000;   
+
 unsigned long microSeconds(void) {     
    unsigned long tmp_timer2_overflow_count;    
    unsigned long tmp;    
