@@ -122,7 +122,7 @@ unsigned short PERIODIC_HIST[10];
 unsigned short BAR_LIMIT = 4800;  /* 48 mpg (3 mpg/px) */
 #endif
 
-enum longparms { contrastIdx=0, 
+enum longparms { contrastIdx = 0, 
                  vssPulsesPerMileIdx, 
                  microSecondsPerGallonIdx, 
                  injPulsesPer2Revolutions, 
@@ -131,20 +131,23 @@ enum longparms { contrastIdx=0,
                  injectorSettleTimeIdx, 
                  weightIdx, 
                  scratchpadIdx, 
-                 vsspause };
+                 vsspauseIdx,
+                 fuelcostIdx,
+                 parmsCount };  /* this is always last */
 
 /* default values */
 unsigned long parms[]={
-   95ul,
-   8208ul,
-   500000000ul,
-   3ul,
-   420000000ul,
-   10300ul,
-   500ul,
-   2400ul,
-   0ul,
-   2ul
+   95ul,               /* contrast                                  */
+   8208ul,             /* pulses per mile                           */
+   500000000ul,        /* us per gallon            1 us/gal/bit?    */
+   3ul,                /* pulses per 2 rev                          */
+   420000000ul,        /* current trip reset timeout                */
+   10300ul,            /* tank size                0.001 gal/bit    */
+   500ul,              /* injector settle time                      */
+   2400ul,             /* weight                   1 lb/bit         */
+   0ul,                /* scratchpad                                */
+   2ul,                /* vsspause                                  */
+   300ul,              /* fuel cost                0.01 dollars/bit */
 };
 
 char *parmLabels[]={
@@ -157,7 +160,8 @@ char *parmLabels[]={
    "Injector DelayuS",
    "Weight (lbs)",
    "Scratchpad(odo?)",
-   "VSS Delay ms"
+   "VSS Delay ms",
+   "Fuel Cost($/gal)"
 };
 
 /* --- Classes --------------------------------------------- */
@@ -172,9 +176,10 @@ class Trip{
                      injIdleHius, 
                      vssPulses, 
                      vssEOCPulses, 
-                     vssPulseLength };
+                     vssPulseLength,
+                     varCount };       /* this is always last ! */
 
-     unsigned long var[9];
+     unsigned long var[varCount];
 
      /* ----
         loopCount      -- how long has this trip been running      
@@ -196,6 +201,7 @@ class Trip{
      unsigned long time();         //mmm.ss        
      unsigned long eocMiles();     //how many "free" miles?        
      unsigned long idleGallons();  //how many gallons spent at 0 mph?        
+     unsigned long fuelCost();
      void update(Trip t);      
      void reset();      
      Trip();      
