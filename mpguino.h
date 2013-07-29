@@ -23,25 +23,25 @@
 
 //Vehicle Interface Pins      
 //#define NC                                   1
-#define InjectorOpenPin                        2      
-#define InjectorClosedPin                      3      
+#define PIN_INJECTOROPEN                        2      
+#define PIN_INJECTORCLOSED                      3      
 //LCD Pins      
-#define DIPin                                  4 // register select RS      
-#define EnablePin                              5       
-#define ContrastPin                            6      
-#define DB4Pin                                 7       
-#define DB5Pin                                 8       
-#define BrightnessPin                          9      
+#define PIN_DI                                  4 // register select RS      
+#define PIN_ENABLE                              5       
+#define PIN_CONTRAST                            6      
+#define PIN_DB4                                 7       
+#define PIN_DB5                                 8       
+#define PIN_BRIGHTNESS                          9      
 //#define NC                                  10
 //#define NC                                  11
-#define DB6Pin                                12       
-#define DB7Pin                                13      
-#define VSSPin                                14 //analog 0      
+#define PIN_DB6                                12       
+#define PIN_DB7                                13      
+#define PIN_VSS                                14 //analog 0      
 //#define NC                                  15
 //#define NC                                  16
-#define lbuttonPin                            17  // Left Button, on analog 3
-#define mbuttonPin                            18  // Middle Button, on analog 4
-#define rbuttonPin                            19  // Right Button, on analog 5
+#define PIN_LBUTTON                            17  // Left Button, on analog 3
+#define PIN_MBUTTON                            18  // Middle Button, on analog 4
+#define PIN_RBUTTON                            19  // Right Button, on analog 5
 
 /* --- Button bitmasks --- */ 
 #define vssBit                              0x01  //  pin14 is a bitmask 1 on port C
@@ -68,9 +68,9 @@ typedef void (* pFunc)(void);//type for display function pointers
 
 /* --- Macros ------------------------------------------------ */
 
-#define LeftButtonPressed        (!(buttonState & lbuttonBit))
-#define RightButtonPressed       (!(buttonState & rbuttonBit))
-#define MiddleButtonPressed      (!(buttonState & mbuttonBit))
+#define GetLeftButtonPressed()        (!(buttonState & lbuttonBit))
+#define GetRightButtonPressed()       (!(buttonState & rbuttonBit))
+#define GetMiddleButtonPressed()      (!(buttonState & mbuttonBit))
 
 #define MIN(value1, value2)\
     (((value1) >= (value2)) ? (value2) : (value1))

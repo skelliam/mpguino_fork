@@ -73,26 +73,26 @@ void  LCD::writeCGRAM(char *newchars, unsigned char numnew) {
 
 void  LCD::tickleEnable(){       
   // send a pulse to enable       
-  digitalWrite(EnablePin,HIGH);       
+  digitalWrite(PIN_ENABLE,HIGH);       
   delayMicroseconds2(1);  // pause 1 ms according to datasheet       
-  digitalWrite(EnablePin,LOW);       
+  digitalWrite(PIN_ENABLE,LOW);       
   delayMicroseconds2(1);  // pause 1 ms according to datasheet       
 }        
  
 void LCD::cmdWriteSet(){       
-  digitalWrite(EnablePin,LOW);       
+  digitalWrite(PIN_ENABLE,LOW);       
   delayMicroseconds2(1);  // pause 1 ms according to datasheet       
-  digitalWrite(DIPin,0);       
+  digitalWrite(PIN_DI,0);       
 }       
  
 unsigned char LCD::pushNibble(unsigned char value){       
-  digitalWrite(DB7Pin, value & 128);       
+  digitalWrite(PIN_DB7, value & 128);       
   value <<= 1;       
-  digitalWrite(DB6Pin, value & 128);       
+  digitalWrite(PIN_DB6, value & 128);       
   value <<= 1;       
-  digitalWrite(DB5Pin, value & 128);       
+  digitalWrite(PIN_DB5, value & 128);       
   value <<= 1;       
-  digitalWrite(DB4Pin, value & 128);       
+  digitalWrite(PIN_DB4, value & 128);       
   value <<= 1;       
   return value;      
 }      
@@ -108,7 +108,7 @@ void LCD::LcdCommandWrite(unsigned char value){
 }       
  
 void LCD::LcdDataWrite(unsigned char value){       
-  digitalWrite(DIPin, HIGH);       
+  digitalWrite(PIN_DI, HIGH);       
   value=pushNibble(value);      
   tickleEnable();       
   value=pushNibble(value);      

@@ -1,4 +1,6 @@
 #define LcdCharHeightPix  8
+#define LcdLine0          0
+#define LcdLine1          1
 
 /* --- LCD Commands --- */
 #define LCD_ClearDisplay                    0x01

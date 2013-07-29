@@ -2,6 +2,7 @@
 #include <EEPROM.h>
 #include "mpguino.h"
 #include "lcd.h"
+#include "ui.h"
 
 /* --- Global Variable Declarations -------------------------- */
 
@@ -48,11 +49,11 @@ unsigned long MAXLOOPLENGTH = 0;            // see if we are overutilizing the C
     B00000, B11111, B11111, B11111, B11111, B11111, B11111, 
     B11111, B11111, B11111, B11111, B11111, B11111, B11111};
 
-  /* map numbers to bar segments.  Example:
-   * ascii_barmap[10] --> all eight segments filled in
-   * ascii_barmap[4]  --> four segments filled in */
-  char ascii_barmap[] = {0x20, 0x01, 0x02, 0x03, 0x04, 0x05, 
-                         0x06, 0x07, 0xFF, 0xFF, 0xFF}; 
+   /* map numbers to bar segments.  Example:
+    * ascii_barmap[10] --> all eight segments filled in
+    * ascii_barmap[4]  --> four segments filled in */
+   char ascii_barmap[] = {0x20, 0x01, 0x02, 0x03, 0x04, 0x05, 
+                          0x06, 0x07, 0xFF, 0xFF, 0xFF}; 
 #endif
 
 #if (CFG_BIGFONT_TYPE == 1)
@@ -73,10 +74,10 @@ unsigned long MAXLOOPLENGTH = 0;            // see if we are overutilizing the C
 #endif
 
 //middle button cycles through these brightness settings      
-unsigned char brightness[]={255,214,171,128};
-unsigned char brightnessIdx=1;
+unsigned char BRIGHTNESS[]={255,214,171,128};
+unsigned char BRIGHTNESSIDX=1;
 
-#define brightnessLength (sizeof(brightness)/sizeof(unsigned char)) //array size
+#define BRIGHTNESSLENGTH (sizeof(BRIGHTNESS)/sizeof(unsigned char)) //array size
 
 volatile unsigned long timer2_overflow_count;
 
@@ -211,18 +212,16 @@ void processInjClosed(void){
    tmpInstInjEnd = t;
 }
 
-volatile boolean vssFlop = 0;
+volatile boolean VSSFLOP = 0;
+unsigned volatile long LASTVSS1;
+unsigned volatile long LASTVSSTIME;
+unsigned volatile long LASTVSS2;
+volatile boolean LASTVSSFLOP = VSSFLOP;
 
 void enableVSS(){
    /*  tmpTrip.var[Trip::vssPulses]++;  */
-   vssFlop = !vssFlop;
+   VSSFLOP = !VSSFLOP;
 }
-
-unsigned volatile long lastVSS1;
-unsigned volatile long lastVSSTime;
-unsigned volatile long lastVSS2;
-
-volatile boolean lastVssFlop = vssFlop;
 
 //attach the vss/buttons interrupt      
 ISR(PCINT1_vect) {   
@@ -232,15 +231,17 @@ ISR(PCINT1_vect) {
    if ((p & vssBit) != (vsspinstate & vssBit)){      
       addEvent(enableVSSID, parms[vsspauseIdx]); //check back in a couple milli
    }
-   if (lastVssFlop != vssFlop) {
-      lastVSS1=lastVSS2;
+
+   if (LASTVSSFLOP != VSSFLOP) {
+      LASTVSS1=LASTVSS2;
       unsigned long t = microSeconds();
-      lastVSS2=elapsedMicroseconds(lastVSSTime,t);
-      lastVSSTime=t;
+      LASTVSS2=elapsedMicroseconds(LASTVSSTIME,t);
+      LASTVSSTIME=t;
       tmpTrip.var[Trip::vssPulses]++; 
-      tmpTrip.var[Trip::vssPulseLength] += lastVSS2;
-      lastVssFlop = vssFlop;
+      tmpTrip.var[Trip::vssPulseLength] += LASTVSS2;
+      LASTVSSFLOP = VSSFLOP;
    }
+
    vsspinstate = p;      
    buttonState &= p;      
 } /* ISR(PCINT1_vect) */
@@ -301,40 +302,40 @@ void setup (void) {
    displayFuncNames[x++]=  PSTR("BIG DTE ");
    #endif
 
-   pinMode(BrightnessPin,OUTPUT);      
-   analogWrite(BrightnessPin,brightness[brightnessIdx]);      
-   pinMode(EnablePin,OUTPUT);       
-   pinMode(DIPin,OUTPUT);       
-   pinMode(DB4Pin,OUTPUT);       
-   pinMode(DB5Pin,OUTPUT);       
-   pinMode(DB6Pin,OUTPUT);       
-   pinMode(DB7Pin,OUTPUT);       
+   pinMode(PIN_BRIGHTNESS,OUTPUT);      
+   analogWrite(PIN_BRIGHTNESS,BRIGHTNESS[BRIGHTNESSIDX]);      
+   pinMode(PIN_ENABLE,OUTPUT);       
+   pinMode(PIN_DI,OUTPUT);       
+   pinMode(PIN_DB4,OUTPUT);       
+   pinMode(PIN_DB5,OUTPUT);       
+   pinMode(PIN_DB6,OUTPUT);       
+   pinMode(PIN_DB7,OUTPUT);       
    delay2(500);      
 
-   pinMode(ContrastPin,OUTPUT);      
-   analogWrite(ContrastPin,parms[contrastIdx]);  
+   pinMode(PIN_CONTRAST,OUTPUT);      
+   analogWrite(PIN_CONTRAST,parms[contrastIdx]);  
    LCD::init();      
    LCD::LcdCommandWrite(LCD_ClearDisplay);            // clear display, set cursor position to zero         
    LCD::LcdCommandWrite(LCD_SetDDRAM);                // set dram to zero
    LCD::print(getStr(PSTR("OpenGauge       ")));      
-   LCD::gotoXY(0,1);      
+   LCD::gotoXY(0, LcdLine1);      
    LCD::print(getStr(PSTR("  MPGuino v0.75S")));
 
-   pinMode(InjectorOpenPin, INPUT);       
-   pinMode(InjectorClosedPin, INPUT);       
-   pinMode(VSSPin, INPUT);            
+   pinMode(PIN_INJECTOROPEN, INPUT);       
+   pinMode(PIN_INJECTORCLOSED, INPUT);       
+   pinMode(PIN_VSS, INPUT);            
    attachInterrupt(0, processInjOpen, FALLING);      
    attachInterrupt(1, processInjClosed, RISING);      
 
-   pinMode( lbuttonPin, INPUT );       
-   pinMode( mbuttonPin, INPUT );       
-   pinMode( rbuttonPin, INPUT );      
+   pinMode( PIN_LBUTTON, INPUT );       
+   pinMode( PIN_MBUTTON, INPUT );       
+   pinMode( PIN_RBUTTON, INPUT );      
 
    //"turn on" the internal pullup resistors      
-   digitalWrite( lbuttonPin, HIGH);       
-   digitalWrite( mbuttonPin, HIGH);       
-   digitalWrite( rbuttonPin, HIGH);       
-   //  digitalWrite( VSSPin, HIGH);       
+   digitalWrite( PIN_LBUTTON, HIGH);       
+   digitalWrite( PIN_MBUTTON, HIGH);       
+   digitalWrite( PIN_RBUTTON, HIGH);       
+   //  digitalWrite( PIN_VSS, HIGH);       
 
    //low level interrupt enable stuff      
    PCMSK1 |= (1 << PCINT8);
@@ -427,7 +428,7 @@ void loop (void) {
             writeEepBlock32(eepBlkAddr_Tank, &tank.var[0], eepBlkSize_Tank);
             #endif
             #if (SLEEP_CFG & Sleep_bkl)
-            analogWrite(BrightnessPin,brightness[0]);    //nitey night
+            analogWrite(PIN_BRIGHTNESS,BRIGHTNESS[0]);    //nitey night
             #endif
             #if (SLEEP_CFG & Sleep_lcd)
             LCD::LcdCommandWrite(LCD_DisplayOnOffCtrl);  //LCD off unless explicitly told ON
@@ -439,7 +440,7 @@ void loop (void) {
          /* wake up! */
          if (lastActivity == nil) {
             #if (SLEEP_CFG & Sleep_bkl)
-            analogWrite(BrightnessPin,brightness[brightnessIdx]);    
+            analogWrite(PIN_BRIGHTNESS,BRIGHTNESS[BRIGHTNESSIDX]);    
             #endif
             #if (SLEEP_CFG & Sleep_lcd)
             /* Turn on the LCD again.  Display should be restored. */
@@ -526,29 +527,29 @@ void loop (void) {
          LCD::print(LCDBUF1);
 
          /* print line 2 */
-         LCD::gotoXY(0,1);
+         LCD::gotoXY(0, LcdLine1);
          LCD::print(LCDBUF2);
 
          LCD::LcdCommandWrite(LCD_ReturnHome);
 
          /* --- see if any buttons were pressed, display a brief message if so --- */
-         if (LeftButtonPressed && RightButtonPressed) {
+         if (GetLeftButtonPressed() && GetRightButtonPressed()) {
             // left and right = initialize      
             LCD::print(getStr(PSTR("Setup ")));    
             initGuino();  
          }
-         else if (LeftButtonPressed && MiddleButtonPressed) {
+         else if (GetLeftButtonPressed() && GetMiddleButtonPressed()) {
             // left and middle = tank reset      
             tank.reset();      
             LCD::print(getStr(PSTR("Tank Reset ")));      
          }
-         else if (MiddleButtonPressed && RightButtonPressed) {
+         else if (GetMiddleButtonPressed() && GetRightButtonPressed()) {
             // right and middle = current reset      
             current.reset();      
             LCD::print(getStr(PSTR("Current Reset ")));      
          }
          #if (CFG_IDLE_MESSAGE == 1)
-         else if ((LeftButtonPressed || RightButtonPressed) && (IdleDisplayRequested)) {
+         else if ((GetLeftButtonPressed() || GetRightButtonPressed()) && (IdleDisplayRequested)) {
             /* if the idle display is up and the user hits the left or right button,
              * intercept this press (nonoe of the elseifs will be hit below) 
              * only in this circumstance and get out of the idle display for a while.
@@ -556,7 +557,7 @@ void loop (void) {
             IDLE_DISPLAY_DELAY = -60;
          }
          #endif
-         else if (LeftButtonPressed) {
+         else if (GetLeftButtonPressed()) {
             // left is rotate through screeens to the left      
             if (SCREEN!=0) {
                 SCREEN = (SCREEN-1);       
@@ -566,22 +567,22 @@ void loop (void) {
             }
             LCD::print(getStr(displayFuncNames[SCREEN]));      
          }
-         else if (MiddleButtonPressed) {
-            // middle is cycle through brightness settings      
-            brightnessIdx = (brightnessIdx + 1) % brightnessLength;      
-            analogWrite(BrightnessPin,brightness[brightnessIdx]);      
+         else if (GetMiddleButtonPressed()) {
+            // middle is cycle through BRIGHTNESS settings      
+            BRIGHTNESSIDX = (BRIGHTNESSIDX + 1) % BRIGHTNESSLENGTH;      
+            analogWrite(PIN_BRIGHTNESS,BRIGHTNESS[BRIGHTNESSIDX]);      
             LCD::print(getStr(PSTR("Brightness ")));      
-            LCD::LcdDataWrite('0' + brightnessIdx);      
+            LCD::LcdDataWrite('0' + BRIGHTNESSIDX);      
             LCD::print(" ");      
          }
-         else if (RightButtonPressed) {
+         else if (GetRightButtonPressed()) {
             // right is rotate through screeens to the left      
             SCREEN=(SCREEN+1)%displayFuncSize;      
             LCD::print(getStr(displayFuncNames[SCREEN]));      
          }      
 
          #if (CFG_IDLE_MESSAGE == 1)
-         if (LeftButtonPressed || RightButtonPressed) {
+         if (GetLeftButtonPressed() || GetRightButtonPressed()) {
             /* When the user wants to change screens, continue to 
              * avoid the idle screen for a while */
             IDLE_DISPLAY_DELAY = -60;
@@ -872,7 +873,7 @@ Trip::Trip(){
  
 
 unsigned long instantmph(){      
-  //unsigned long vssPulseTimeuS = (lastVSS1 + lastVSS2) / 2;
+  //unsigned long vssPulseTimeuS = (LASTVSS1 + LASTVSS2) / 2;
   unsigned long vssPulseTimeuS = instant.var[Trip::vssPulseLength]/instant.var[Trip::vssPulses];
   
   init64(tmp1,0,1000000000ul);
@@ -977,48 +978,48 @@ unsigned long  Trip::gallons(){
 }      
 
 unsigned long  Trip::idleGallons(){      
-  init64(tmp1,0,var[Trip::injIdleHiSec]);
-  init64(tmp2,0,1000000);
-  mul64(tmp1,tmp2);
-  init64(tmp2,0,var[Trip::injIdleHius]);
-  add64(tmp1,tmp2);
-  init64(tmp2,0,1000);
-  mul64(tmp1,tmp2);
-  init64(tmp2,0,parms[microSecondsPerGallonIdx]);
-  div64(tmp1,tmp2);
-  return tmp1[1];      
+   init64(tmp1,0,var[Trip::injIdleHiSec]);
+   init64(tmp2,0,1000000);
+   mul64(tmp1,tmp2);
+   init64(tmp2,0,var[Trip::injIdleHius]);
+   add64(tmp1,tmp2);
+   init64(tmp2,0,1000);
+   mul64(tmp1,tmp2);
+   init64(tmp2,0,parms[microSecondsPerGallonIdx]);
+   div64(tmp1,tmp2);
+   return tmp1[1];      
 }      
 
 unsigned long  Trip::fuelCost(){
-  init64(tmp1,0,(Trip::gallons()));  /* 0.001 gal/bit */
-  init64(tmp2,0,parms[fuelcostIdx]); /* 0.01 dollars/bit */
-  mul64(tmp1,tmp2);
-  init64(tmp2,0,100);
-  div64(tmp1,tmp2);
-  return tmp1[1];
+   init64(tmp1,0,(Trip::gallons()));  /* 0.001 gal/bit */
+   init64(tmp2,0,parms[fuelcostIdx]); /* 0.01 dollars/bit */
+   mul64(tmp1,tmp2);
+   init64(tmp2,0,100);
+   div64(tmp1,tmp2);
+   return tmp1[1];
 }
 
  
 unsigned long  Trip::mpg(){      
-  if(var[Trip::vssPulses]==0) return 0;      
-  if(var[Trip::injPulses]==0) return 999999000; //who doesn't like to see 999999?  :)      
- 
-  init64(tmp1,0,var[Trip::injHiSec]);
-  init64(tmp3,0,1000000);
-  mul64(tmp3,tmp1);
-  init64(tmp1,0,var[Trip::injHius]);
-  add64(tmp3,tmp1);
-  init64(tmp1,0,parms[vssPulsesPerMileIdx]);
-  mul64(tmp3,tmp1);
- 
-  init64(tmp1,0,parms[microSecondsPerGallonIdx]);
-  init64(tmp2,0,1000);
-  mul64(tmp1,tmp2);
-  init64(tmp2,0,var[Trip::vssPulses]);
-  mul64(tmp1,tmp2);
- 
-  div64(tmp1,tmp3);
-  return tmp1[1];      
+   if(var[Trip::vssPulses]==0) return 0;      
+   if(var[Trip::injPulses]==0) return 999999000; //who doesn't like to see 999999?  :)      
+
+   init64(tmp1,0,var[Trip::injHiSec]);
+   init64(tmp3,0,1000000);
+   mul64(tmp3,tmp1);
+   init64(tmp1,0,var[Trip::injHius]);
+   add64(tmp3,tmp1);
+   init64(tmp1,0,parms[vssPulsesPerMileIdx]);
+   mul64(tmp3,tmp1);
+
+   init64(tmp1,0,parms[microSecondsPerGallonIdx]);
+   init64(tmp2,0,1000);
+   mul64(tmp1,tmp2);
+   init64(tmp2,0,var[Trip::vssPulses]);
+   mul64(tmp1,tmp2);
+
+   div64(tmp1,tmp3);
+   return tmp1[1];      
 }      
  
 //return the seconds as a time mmm.ss, eventually hhh:mm too      
@@ -1109,38 +1110,39 @@ void bigNum (unsigned long t, char * txt1, char * txt2){
 
 int insert(int *array, int val, size_t size, size_t at)
 {
-  size_t i;
+   size_t i;
 
-  /* In range? */
-  if (at >= size)
-    return -1;
+   /* In range? */
+   if (at >= size) return -1;
 
-  /* Shift elements to make a hole */
-  for (i = size - 1; i > at; i--)
-    array[i] = array[i - 1];
-  /* Insertion! */
-  array[at] = val;
+   /* Shift elements to make a hole */
+   for (i = size - 1; i > at; i--) {
+      array[i] = array[i - 1];
+   }
 
-  return 0;
+   /* Insertion! */
+   array[at] = val;
+
+   return 0;
 }
   
 void save(){
-  EEPROM.write(0,guinosig);
-  EEPROM.write(1,parmsCount);
-  writeEepBlock32(0x04, &parms[0], parmsCount);
+   EEPROM.write(0,guinosig);
+   EEPROM.write(1,parmsCount);
+   writeEepBlock32(0x04, &parms[0], parmsCount);
 }
 
 void writeEepBlock32(unsigned int start_addr, unsigned long *val, unsigned int size) {
-  unsigned char p = 0;
-  unsigned char shift = 0;
-  int i = 0;
-  for(start_addr; p < size; start_addr+=4) {
-    for (i=0; i<4; i++) {
-      shift = (8 * (3-i));  /* 24, 16, 8, 0 */
-      EEPROM.write(start_addr + i, (val[p]>>shift) & 0xFF);
-    }
-    p++;
-  }
+   unsigned char p = 0;
+   unsigned char shift = 0;
+   int i = 0;
+   for(start_addr; p < size; start_addr+=4) {
+      for (i=0; i<4; i++) {
+         shift = (8 * (3-i));  /* 24, 16, 8, 0 */
+         EEPROM.write(start_addr + i, (val[p]>>shift) & 0xFF);
+      }
+      p++;
+   }
 }
 
 void readEepBlock32(unsigned int start_addr, unsigned long *val, unsigned int size) {
@@ -1160,54 +1162,57 @@ void readEepBlock32(unsigned int start_addr, unsigned long *val, unsigned int si
 }
 
 unsigned char load(){ //return 1 if loaded ok
-  #ifdef usedefaults
-    return 1;
-  #endif
-  unsigned char b = EEPROM.read(0);
-  unsigned char c = EEPROM.read(1);
-  if(b == guinosigold)
-    c=9; //before fancy parameter counter
+   #ifdef usedefaults
+   return 1;
+   #endif
+   unsigned char b = EEPROM.read(0);
+   unsigned char c = EEPROM.read(1);
+   if (b == guinosigold) c=9; //before fancy parameter counter
 
-  if(b == guinosig || b == guinosigold){
-    readEepBlock32(0x04, &parms[0], parmsCount);
-    #if (TANK_IN_EEPROM_CFG == 1)
-    /* read out the tank variables on boot */
-    /* TODO:  eepBlkSize_Tank is appropriate for size? */
-    readEepBlock32(eepBlkAddr_Tank, &tank.var[0], eepBlkSize_Tank);  
-    #endif
-    return 1;
-  }
-  return 0;
+   if (b == guinosig || b == guinosigold) {
+      readEepBlock32(0x04, &parms[0], parmsCount);
+      #if (TANK_IN_EEPROM_CFG == 1)
+      /* read out the tank variables on boot */
+      /* TODO:  eepBlkSize_Tank is appropriate for size? */
+      readEepBlock32(eepBlkAddr_Tank, &tank.var[0], eepBlkSize_Tank);  
+      #endif
+      return 1;
+   }
+   return 0;
 }
 
 char * uformat(unsigned long val){ 
-  static char mBuff[17];
-  unsigned long d = 1000000000ul;
-  unsigned char p;
-  for(p = 0; p < 10 ; p++){
-    mBuff[p]='0' + (val/d);
-    val=val-(val/d*d);
-    d/=10;
-  }
-  mBuff[10]=0;
-  return mBuff;
+   static char mBuff[17];
+   unsigned long d = 1000000000ul;
+   unsigned char p;
+
+   for(p = 0; p < 10 ; p++) {
+      mBuff[p]='0' + (val/d);
+      val=val-(val/d*d);
+      d/=10;
+   }
+
+   mBuff[10]=0;
+   return mBuff;
 } 
 
 unsigned long rformat(char * val){ 
-  unsigned long d = 1000000000ul;
-  unsigned long v = 0ul;
-  for(unsigned char p = 0; p < 10 ; p++){
-    v=v+(d*(val[p]-'0'));
-    d/=10;
-  }
-  return v;
+   unsigned long d = 1000000000ul;
+   unsigned long v = 0ul;
+   for(unsigned char p = 0; p < 10 ; p++){
+      v=v+(d*(val[p]-'0'));
+      d/=10;
+   }
+   return v;
 } 
 
 
-void editParm(unsigned char parmIdx){
+void editParm(unsigned char parmIdx) {
    unsigned long v = parms[parmIdx];
-   unsigned char p=9;  //right end of 10 digit number
+   signed char cursor_pos=9;  //right end of 10 digit number
    unsigned char keyLock=1;    
+   unsigned char num;
+
    char *fmtv = uformat(v);
 
    /* -- line 1 -- */
@@ -1215,14 +1220,14 @@ void editParm(unsigned char parmIdx){
 
    /* -- line 2 -- */
    strcpy(&LCDBUF2[0], fmtv);
-   strcpy(&LCDBUF2[10], " OK XX");
+   strcpy(&LCDBUF2[Pos_OK], " OK XX");
 
    /* -- write to display -- */
    LCDBUF1[16] = 0; 
    LCDBUF2[16] = 0;
    LCD::LcdCommandWrite(LCD_ClearDisplay);
    LCD::print(LCDBUF1);
-   LCD::gotoXY(0,1);    
+   LCD::gotoXY(0, LcdLine1);    
    LCD::print(LCDBUF2);
 
    /* -- turn the cursor on -- */
@@ -1230,91 +1235,88 @@ void editParm(unsigned char parmIdx){
 
 #if (CFG_NICE_CURSOR)
    //do a nice thing and put the cursor at the first non zero number
-   for(int x=9 ; x>=0 ;x--) { 
-      if(fmtv[x] != '0') {
-         p=x; 
+   for(int x=9; x>=0; x--) { 
+      if (fmtv[x] != '0') {
+         cursor_pos=x; 
       }
    }
 #else
    /* cursor on 'XX' by default except for contrast */
-   (parmIdx == contrastIdx) ? p=8 : p=11;  
+   (parmIdx == contrastIdx) ? cursor_pos=(Pos_Last_Number-1) : cursor_pos=Pos_Cancel;  
 #endif
 
-  while(true){
+   while (true){
+      if (cursor_pos < Pos_OK)             LCD::gotoXY(cursor_pos, LcdLine1);   
+      if (cursor_pos == Pos_OK)            LCD::gotoXY(Pos_Cancel, LcdLine1);   
+      if (cursor_pos == Pos_Cancel)        LCD::gotoXY(Pos_Cursor_End, LcdLine1);   
 
-    if(p<10)
-      LCD::gotoXY(p,1);   
-    if(p==10)     
-      LCD::gotoXY(11,1);   
-    if(p==11)     
-      LCD::gotoXY(14,1);   
-
-     if(keyLock == 0) { 
-        if (LeftButtonPressed && RightButtonPressed) {
-            if (p<10)
-               p=10;
-            else if (p==10) 
-               p=11;
+      if (keyLock == 0) { 
+         if (GetLeftButtonPressed() && GetRightButtonPressed()) {
+            if (cursor_pos < Pos_OK)        cursor_pos = Pos_OK;
+            else if (cursor_pos == Pos_OK)  cursor_pos = Pos_Cancel;
 #if (CFG_NICE_CURSOR)
             //do a nice thing and put the cursor at the first non zero number
-            else{
-              for(int x=9 ; x>=0 ;x--){ 
-                if(fmtv[x] != '0')
-               p=x; 
-              }
+            else {
+               for(int x=Pos_Last_Number; x>=Pos_First_Number; x--) { 
+                 if (fmtv[x] != '0') cursor_pos = x; 
+               }
             }
 #else
             else {
                /* cursor on 'XX' by default except for contrast */
-               (parmIdx == contrastIdx) ? p=8 : p=11;  
+               (parmIdx == contrastIdx) ? cursor_pos = (Pos_Last_Number-1) : cursor_pos = Pos_Cancel;  
             }
 #endif
-        }else if (LeftButtonPressed) {
-            p=p-1;
-            if(p==255)p=11;
-        }else if(RightButtonPressed) {
-             p=p+1;
-            if(p==12)p=0;
-        }else if(MiddleButtonPressed) {
-             if(p==11){  //cancel selected
-                LCD::LcdCommandWrite(B00001100);
-                return;
-             }
-             if(p==10){  //ok selected
-                LCD::LcdCommandWrite(B00001100);
-                parms[parmIdx]=rformat(fmtv);
-                return;
-             }
+         } else if (GetLeftButtonPressed()) {
+            cursor_pos--;
+            if (cursor_pos == -1) cursor_pos = Pos_Cancel;
+         } else if (GetRightButtonPressed()) {
+            cursor_pos++;
+            if (cursor_pos == Pos_Cursor_End) cursor_pos = Pos_First_Number;
+         } else if (GetMiddleButtonPressed()) {
+
+            if (cursor_pos == Pos_Cancel) {
+               LCD::LcdCommandWrite(B00001100);
+               return;
+            }
+
+            if (cursor_pos == Pos_OK) { 
+               LCD::LcdCommandWrite(B00001100);
+               parms[parmIdx] = rformat(fmtv);     /* RAM parameter is updated */
+               return;
+            }
              
-             unsigned char n = fmtv[p]-'0';
-             n++;
-             if (n > 9) n=0;
-             if(p==0 && n > 3) n=0;
-             fmtv[p]='0'+ n;
-             LCD::gotoXY(0,1);        
-             LCD::print(fmtv);
-             LCD::gotoXY(p,1);        
-             if(parmIdx==contrastIdx)//adjust contrast dynamically
-                 analogWrite(ContrastPin,rformat(fmtv));  
+            num = fmtv[cursor_pos]-'0';  /* get integer value of character at cursor_pos */
+            num++;
+            if (num > 9) num=0;
+            if ((cursor_pos == Pos_First_Number) && (num > 3)) (num=0);
+            fmtv[cursor_pos]='0'+ num;
+
+            LCD::gotoXY(0, LcdLine1);        
+            LCD::print(fmtv);
+            LCD::gotoXY(cursor_pos, LcdLine1);        
+
+            //adjust contrast dynamically
+            if (parmIdx == contrastIdx) analogWrite(PIN_CONTRAST, rformat(fmtv));  
         }
 
-      if(buttonState!=buttonsUp)
+     if (buttonState != buttonsUp)
          keyLock=1;
-     }else{
-        keyLock=0;
+     } else {
+         keyLock=0;
      }
-      buttonState=buttonsUp;
-      delay2(125);
+     buttonState=buttonsUp;
+     delay2(125);
   }      
   
 }
 
 void initGuino(){ //edit all the parameters
-  for(int x = 0; x<parmsCount; x++) {
-    editParm(x);
-  }
-  save();
-  HOLD_DISPLAY=1;
+   for(int x = 0; x<parmsCount; x++) {
+      editParm(x);
+   }
+   save();
+   HOLD_DISPLAY=1;
 }  
 
 unsigned long millis2(){
@@ -1371,16 +1373,15 @@ void init2(){
 
 #if (CFG_SERIAL_TX == 1)
 void simpletx( char * string ){
- if (UCSR0B != (1<<TXEN0)){ //do we need to init the uart?
-    UBRR0H = (unsigned char)(myubbr>>8);
-    UBRR0L = (unsigned char)myubbr;
-    UCSR0B = (1<<TXEN0);//Enable transmitter
-    UCSR0C = (3<<UCSZ00);//N81
- }
- while (*string)
- {
-   while ( !( UCSR0A & (1<<UDRE0)) );
-   UDR0 = *string++; //send the data
- }
+   if (UCSR0B != (1<<TXEN0)) { //do we need to init the uart?
+      UBRR0H = (unsigned char)(myubbr>>8);
+      UBRR0L = (unsigned char)myubbr;
+      UCSR0B = (1<<TXEN0);//Enable transmitter
+      UCSR0C = (3<<UCSZ00);//N81
+   }
+   while (*string) {
+      while ( !( UCSR0A & (1<<UDRE0)) );
+      UDR0 = *string++; //send the data
+   }
 }
 #endif
