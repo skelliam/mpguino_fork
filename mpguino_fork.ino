@@ -654,7 +654,6 @@ char *format(unsigned long num) {
 
    num /= 10;
 
-
    while (x > 0) {
       x--;
       if (x == dp) {
@@ -662,13 +661,23 @@ char *format(unsigned long num) {
          fBuff[x]='.';
       }
       else {
-         /* poke the ascii character for the digit. */
-         fBuff[x]= '0' + (num % 10);
+         if ( ((x+1) == dp) && (num == 0) ) {
+            /* decimal point just inserted and nothing left, put in a zero */
+            fBuff[x]='0';
+         }
+         else if ( (x < dp) && (num == 0) ) {
+            /* we have more to go and decimal point already done, put in spaces */
+            fBuff[x]=' ';
+         }
+         else {
+            /* poke the ascii character for the digit. */
+            fBuff[x]= '0' + (num % 10);
+         }
          num /= 10;
       }
    }
 
-   fBuff[6] = 0;
+   fBuff[6] = 0;  //terminating null
    return fBuff;
 }
  
