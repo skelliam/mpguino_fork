@@ -11,4 +11,6 @@ Added features:
   * Clear display on sleep
   * Calculate fuel cost while driving (fuel cost stored as setting in eeprom)
   * Fuelcut warning character to show when fuelcut is active
-  * Some displays alternately show cost
+  * Some displays alternaetely show cost
+  * Distance to empty calculation (tank capacity in eeprom)
+  * Remove leading zeros from display  (Oct 2013)
