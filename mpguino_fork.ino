@@ -708,7 +708,7 @@ void doDisplayEOCIdleData() {
 }      
 
 void doDisplayInstantCurrent() {
-   displayTripCombo('I','m',instantmpg(),'s',instantmph(),'C','m',current.mpg(),'d',current.miles());
+   displayTripCombo('I','m',instantmpg(),'X',calcDistToEmpty(),'C','m',current.mpg(),'d',current.miles());
 }      
  
 void doDisplayInstantTank() {
@@ -810,17 +810,10 @@ void doDisplayBarGraph(void) {
 }
 #endif
 
+
 #if (DTE_CFG == 1)
 void doDisplayBigDTE(void) {
-   unsigned long dte;
-   signed long gals_remaining;
-   /* TODO: user configurable safety factor see minus zero below */
-   gals_remaining = (parms[tankSizeIdx] - tank.gallons()) - 0;  /* 0.001 gal/bit */
-   gals_remaining = MAX(gals_remaining, 0);
-   dte = gals_remaining * (tank.mpg()/100);                     /* mpg() = 0.1 mpg/bit */
-   dte /= 10; /* divide by 10 here to avoid precision loss */
-   /* dividing a signed long by 10 for some reason adds 100 bytes to program size?
-    * otherwise I would've divided gals by 10 earlier! */
+   unsigned long dte = calcDistToEmpty();
    bigNum(dte, "DIST", "TO E");
 }
 #endif
@@ -938,6 +931,23 @@ unsigned long instantrpm(){
   div64(tmp1,tmp2);
   return tmp1[1];      
 } */
+
+
+#if (DTE_CFG)
+unsigned long calcDistToEmpty(void) {
+   unsigned long dte;
+   signed long gals_remaining;
+   /* TODO: user configurable safety factor see minus zero below */
+   gals_remaining = (parms[tankSizeIdx] - tank.gallons()) - 0;  /* 0.001 gal/bit */
+   gals_remaining = MAX(gals_remaining, 0);
+   dte = gals_remaining * (tank.mpg()/100);                     /* mpg() = 0.1 mpg/bit */
+   dte /= 10; /* divide by 10 here to avoid precision loss */
+   /* dividing a signed long by 10 for some reason adds 100 bytes to program size?
+    * otherwise I would've divided gals by 10 earlier! */
+   return dte;
+}
+#endif
+
 
 unsigned long Trip::miles(){      
   init64(tmp1,0,var[Trip::vssPulses]);
