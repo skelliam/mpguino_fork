@@ -6,6 +6,17 @@
 #define Sleep_bkl                           0x01
 #define Sleep_lcd                           0x02
 
+#define Pos_OK                              10
+#define Pos_Cancel                          11
+#define Pos_TensDigit                       8
+#define Pos_OnesDigit                       9
+#define Pos_MaxInput                        9
+#define Pos_MinInput                        0
+#define Pos_Max                             12
+
+
+#define Time_TwoMinutes                     240
+
 #if (CFG_SERIAL_TX == 1)
    #define myubbr (16000000/16/9600-1)
 #endif
@@ -19,7 +30,6 @@
  
 #define guinosigold                    B10100101 
 #define guinosig                       B11100111 
-
 
 //Vehicle Interface Pins      
 //#define NC                                   1

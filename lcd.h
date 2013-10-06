@@ -1,3 +1,7 @@
+#define LCD_TopLine                         0
+#define LCD_BottomLine                      1
+
+
 #define LcdCharHeightPix  8
 
 /* --- LCD Commands --- */
