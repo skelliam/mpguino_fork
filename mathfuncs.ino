@@ -40,12 +40,12 @@ void sub64(unsigned long  an[], unsigned long  ann[]){
 }
  
 //true if an == ann
-boolean eq64(unsigned long  an[], unsigned long  ann[]){
+bool eq64(unsigned long  an[], unsigned long  ann[]){
   return (an[0]==ann[0]) && (an[1]==ann[1]);
 }
  
 //true if an < ann
-boolean lt64(unsigned long  an[], unsigned long  ann[]){
+bool lt64(unsigned long  an[], unsigned long  ann[]){
   if(an[0]>ann[0]) return false;
   return (an[0]<ann[0]) || (an[1]<ann[1]);
 }

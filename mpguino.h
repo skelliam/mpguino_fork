@@ -62,9 +62,6 @@
 // start with the buttons in the right state      
 #define buttonsUp   lbuttonBit + mbuttonBit + rbuttonBit
 
-// how many times will we try and loop in a second     
-#define loopsPerSecond                         2   
-
 /* --- LCD line buffer size --- */
 #define bufsize                               17
 
@@ -89,8 +86,6 @@ typedef void (* pFunc)(void);//type for display function pointers
     (((value1)>=(value2)) ? (value1) : (value2))
 
 #define length(x) (sizeof x / sizeof *x)
-
-#define looptime 1000000ul/loopsPerSecond /* 0.5 second */
 
 #if (CFG_IDLE_MESSAGE == 1)
 #define IdleDisplayRequested     (IDLE_DISPLAY_DELAY > 0)
@@ -132,89 +127,7 @@ unsigned short PERIODIC_HIST[10];
 unsigned short BAR_LIMIT = 4800;  /* 48 mpg (3 mpg/px) */
 #endif
 
-enum longparms { contrastIdx = 0, 
-                 vssPulsesPerMileIdx, 
-                 microSecondsPerGallonIdx, 
-                 injPulsesPer2Revolutions, 
-                 currentTripResetTimeoutUSIdx, 
-                 tankSizeIdx, 
-                 injectorSettleTimeIdx, 
-                 weightIdx, 
-                 scratchpadIdx, 
-                 vsspauseIdx,
-                 fuelcostIdx,
-                 parmsCount };  /* this is always last */
-
-/* default values */
-unsigned long parms[]={
-   95ul,               /* contrast                                  */
-   8208ul,             /* pulses per mile                           */
-   500000000ul,        /* us per gallon            1 us/gal/bit?    */
-   3ul,                /* pulses per 2 rev                          */
-   420000000ul,        /* current trip reset timeout                */
-   10300ul,            /* tank size                0.001 gal/bit    */
-   500ul,              /* injector settle time                      */
-   2400ul,             /* weight                   1 lb/bit         */
-   0ul,                /* scratchpad                                */
-   2ul,                /* vsspause                                  */
-   300ul,              /* fuel cost                0.01 dollars/bit */
-};
-
-char *parmLabels[]={
-   "Contrast",
-   "VSS Pulses/Mile", 
-   "MicroSec/Gallon",
-   "Pulses/2 revs",
-   "Timout(microSec)",
-   "Tank Gal * 1000",
-   "Injector DelayuS",
-   "Weight (lbs)",
-   "Scratchpad(odo?)",
-   "VSS Delay ms",
-   "Fuel Cost($/gal)"
-};
 
 /* --- Classes --------------------------------------------- */
 
-class Trip{      
-   public:      
-     enum varnames { loopCount=0, 
-                     injPulses, 
-                     injHiSec, 
-                     injHius, 
-                     injIdleHiSec, 
-                     injIdleHius, 
-                     vssPulses, 
-                     vssEOCPulses, 
-                     vssPulseLength,
-                     varCount };       /* this is always last ! */
-
-     unsigned long var[varCount];
-
-     /* ----
-        loopCount      -- how long has this trip been running      
-        injPulses      -- rpm      
-        injHiSec       -- seconds the injector has been open      
-        injHius        -- microseconds, fractional part of the injectors open
-        injIdleHiSec   -- seconds the injector has been open
-        injIdleHius    -- microseconds, fractional part of the injectors open
-        vssPulses      -- from the speedo
-        vssEOCPulses   -- from the speedo
-        vssPulseLength -- only used by instant
-     ---- */
-
-     //these functions actually return in thousandths,       
-     unsigned long miles();        
-     unsigned long gallons();      
-     unsigned long mpg();        
-     unsigned long mph();        
-     unsigned long time();         //mmm.ss        
-     unsigned long eocMiles();     //how many "free" miles?        
-     unsigned long idleGallons();  //how many gallons spent at 0 mph?        
-     unsigned long fuelCost();
-     void update(Trip t);      
-     void reset();      
-     Trip();      
-};      
- 
 

@@ -3,15 +3,46 @@
 #include "mpguino.h"
 #include "lcd.h"
 #include "macros.h"
+#include "trip.h"
+#include "mathfuncs.h"
+#include "parms.h"
 
 /* --- Global Variable Declarations -------------------------- */
-
-//for display computing
-static unsigned long tmp1[2];
-static unsigned long tmp2[2];
-static unsigned long tmp3[2];
-
 unsigned long MAXLOOPLENGTH = 0;            // see if we are overutilizing the CPU      
+
+//main objects we will be working with:      
+unsigned long injHiStart; //for timing injector pulses      
+Trip tmpTrip;      
+Trip instant;      
+Trip current;      
+Trip tank;
+#if (BARGRAPH_DISPLAY_CFG == 1)
+Trip periodic;
+#endif
+
+unsigned volatile long instInjStart=nil; 
+unsigned volatile long tmpInstInjStart=nil; 
+unsigned volatile long instInjEnd; 
+unsigned volatile long tmpInstInjEnd; 
+unsigned volatile long instInjTot; 
+unsigned volatile long tmpInstInjTot;     
+unsigned volatile long instInjCount; 
+unsigned volatile long tmpInstInjCount;     
+unsigned volatile long lastVSS1;
+unsigned volatile long lastVSSTime;
+unsigned volatile long lastVSS2;
+
+volatile bool vssFlop = 0;
+volatile bool lastVssFlop = vssFlop;
+
+//middle button cycles through these brightness settings      
+unsigned char brightness[]={255,214,171,128};
+unsigned char brightnessIdx=1;
+
+#define brightnessLength (sizeof(brightness)/sizeof(unsigned char)) //array size
+
+volatile unsigned long timer2_overflow_count;
+
 
 #if (CFG_BIGFONT_TYPE == 1)
   static char chars[] PROGMEM = {
@@ -73,13 +104,6 @@ unsigned long MAXLOOPLENGTH = 0;            // see if we are overutilizing the C
                           2,2,6,0,     4,2,6,0, 32,7,32,0, 4,2,6,0,     2,2,6,0};
 #endif
 
-//middle button cycles through these brightness settings      
-unsigned char brightness[]={255,214,171,128};
-unsigned char brightnessIdx=1;
-
-#define brightnessLength (sizeof(brightness)/sizeof(unsigned char)) //array size
-
-volatile unsigned long timer2_overflow_count;
 
 /* --- End Global Variable Declarations ---------------------- */
 
@@ -99,7 +123,7 @@ void enableLButton(){PCMSK1 |= (1 << PCINT11);}
 void enableMButton(){PCMSK1 |= (1 << PCINT12);}
 void enableRButton(){PCMSK1 |= (1 << PCINT13);}
 //array of the event functions
-pFunc eventFuncs[] ={enableVSS, enableLButton,enableMButton,enableRButton};
+pFunc eventFuncs[] ={enableVSS, enableLButton, enableMButton, enableRButton};
 #define eventFuncSize (sizeof(eventFuncs)/sizeof(pFunc)) 
 //define the event IDs
 #define enableVSSID 0
@@ -169,24 +193,6 @@ unsigned long elapsedMicroseconds(unsigned long startMicroSeconds ){
 }      
  
  
-//main objects we will be working with:      
-unsigned long injHiStart; //for timing injector pulses      
-Trip tmpTrip;      
-Trip instant;      
-Trip current;      
-Trip tank;
-#if (BARGRAPH_DISPLAY_CFG == 1)
-Trip periodic;
-#endif
-
-unsigned volatile long instInjStart=nil; 
-unsigned volatile long tmpInstInjStart=nil; 
-unsigned volatile long instInjEnd; 
-unsigned volatile long tmpInstInjEnd; 
-unsigned volatile long instInjTot; 
-unsigned volatile long tmpInstInjTot;     
-unsigned volatile long instInjCount; 
-unsigned volatile long tmpInstInjCount;     
 
 
 void processInjOpen(void){      
@@ -212,23 +218,17 @@ void processInjClosed(void){
    tmpInstInjEnd = t;
 }
 
-volatile boolean vssFlop = 0;
+
 
 void enableVSS(){
-   /*  tmpTrip.var[Trip::vssPulses]++;  */
    vssFlop = !vssFlop;
 }
 
-unsigned volatile long lastVSS1;
-unsigned volatile long lastVSSTime;
-unsigned volatile long lastVSS2;
-
-volatile boolean lastVssFlop = vssFlop;
 
 //attach the vss/buttons interrupt      
 ISR(PCINT1_vect) {   
    static unsigned char vsspinstate=0;      
-   unsigned char p = PINC;//bypassing digitalRead for interrupt performance      
+   unsigned char p = PINC;         //bypassing digitalRead for interrupt performance      
 
    if ((p & vssBit) != (vsspinstate & vssBit)){      
       addEvent(enableVSSID, parms[vsspauseIdx]); //check back in a couple milli
@@ -866,12 +866,11 @@ int memoryTest(){
   return free_memory; 
 } 
  
-Trip::Trip(){      
-}      
- 
 
 unsigned long instantmph(){      
-  //unsigned long vssPulseTimeuS = (lastVSS1 + lastVSS2) / 2;
+  unsigned long tmp1[2];
+  unsigned long tmp2[2];
+
   unsigned long vssPulseTimeuS = instant.var[Trip::vssPulseLength]/instant.var[Trip::vssPulses];
   
   init64(tmp1,0,1000000000ul);
@@ -885,8 +884,11 @@ unsigned long instantmph(){
 }
 
 unsigned long instantmpg(){     
+  unsigned long tmp1[2];
+  unsigned long tmp2[2];
   unsigned long imph=instantmph();
   unsigned long igph=instantgph();
+
   if(imph == 0) return 0;
   if(igph == 0) return 999999000;
   init64(tmp1,0,1000ul);
@@ -899,11 +901,9 @@ unsigned long instantmpg(){
 
 
 unsigned long instantgph(){      
-//  unsigned long vssPulseTimeuS = instant.var[Trip::vssPulseLength]/instant.var[Trip::vssPulses];
-  
-//  unsigned long instInjStart=nil; 
-//unsigned long instInjEnd; 
-//unsigned long instInjTot; 
+  unsigned long tmp1[2];
+  unsigned long tmp2[2];
+
   init64(tmp1,0,instInjTot);
   init64(tmp2,0,3600000000ul);
   mul64(tmp1,tmp2);
@@ -915,8 +915,12 @@ unsigned long instantgph(){
   div64(tmp1,tmp2);
   return tmp1[1];      
 }
+
 /*
 unsigned long instantrpm(){      
+  unsigned long tmp1[2];
+  unsigned long tmp2[2];
+
   init64(tmp1,0,instInjCount);
   init64(tmp2,0,120000000ul);
   mul64(tmp1,tmp2);
@@ -945,145 +949,6 @@ unsigned long calcDistToEmpty(void) {
 }
 #endif
 
-
-unsigned long Trip::miles(){      
-  init64(tmp1,0,var[Trip::vssPulses]);
-  init64(tmp2,0,1000);
-  mul64(tmp1,tmp2);
-  init64(tmp2,0,parms[vssPulsesPerMileIdx]);
-  div64(tmp1,tmp2);
-  return tmp1[1];      
-}      
- 
-unsigned long Trip::eocMiles(){      
-  init64(tmp1,0,var[Trip::vssEOCPulses]);
-  init64(tmp2,0,1000);
-  mul64(tmp1,tmp2);
-  init64(tmp2,0,parms[vssPulsesPerMileIdx]);
-  div64(tmp1,tmp2);
-  return tmp1[1];      
-}       
- 
-unsigned long Trip::mph(){      
-  if(var[Trip::loopCount] == 0)     
-     return 0;     
-  init64(tmp1,0,loopsPerSecond);
-  init64(tmp2,0,var[Trip::vssPulses]);
-  mul64(tmp1,tmp2);
-  init64(tmp2,0,3600000);
-  mul64(tmp1,tmp2);
-  init64(tmp2,0,parms[vssPulsesPerMileIdx]);
-  div64(tmp1,tmp2);
-  init64(tmp2,0,var[Trip::loopCount]);
-  div64(tmp1,tmp2);
-  return tmp1[1];      
-}      
- 
-unsigned long  Trip::gallons(){      
-  init64(tmp1,0,var[Trip::injHiSec]);
-  init64(tmp2,0,1000000);
-  mul64(tmp1,tmp2);
-  init64(tmp2,0,var[Trip::injHius]);
-  add64(tmp1,tmp2);
-  init64(tmp2,0,1000);
-  mul64(tmp1,tmp2);
-  init64(tmp2,0,parms[microSecondsPerGallonIdx]);
-  div64(tmp1,tmp2);
-  return tmp1[1];      
-}      
-
-unsigned long  Trip::idleGallons(){      
-  init64(tmp1,0,var[Trip::injIdleHiSec]);
-  init64(tmp2,0,1000000);
-  mul64(tmp1,tmp2);
-  init64(tmp2,0,var[Trip::injIdleHius]);
-  add64(tmp1,tmp2);
-  init64(tmp2,0,1000);
-  mul64(tmp1,tmp2);
-  init64(tmp2,0,parms[microSecondsPerGallonIdx]);
-  div64(tmp1,tmp2);
-  return tmp1[1];      
-}      
-
-unsigned long  Trip::fuelCost(){
-  init64(tmp1,0,(Trip::gallons()));  /* 0.001 gal/bit */
-  init64(tmp2,0,parms[fuelcostIdx]); /* 0.01 dollars/bit */
-  mul64(tmp1,tmp2);
-  init64(tmp2,0,100);
-  div64(tmp1,tmp2);
-  return tmp1[1];
-}
-
- 
-unsigned long  Trip::mpg(){      
-  if(var[Trip::vssPulses]==0) return 0;      
-  if(var[Trip::injPulses]==0) return 999999000; //who doesn't like to see 999999?  :)      
- 
-  init64(tmp1,0,var[Trip::injHiSec]);
-  init64(tmp3,0,1000000);
-  mul64(tmp3,tmp1);
-  init64(tmp1,0,var[Trip::injHius]);
-  add64(tmp3,tmp1);
-  init64(tmp1,0,parms[vssPulsesPerMileIdx]);
-  mul64(tmp3,tmp1);
- 
-  init64(tmp1,0,parms[microSecondsPerGallonIdx]);
-  init64(tmp2,0,1000);
-  mul64(tmp1,tmp2);
-  init64(tmp2,0,var[Trip::vssPulses]);
-  mul64(tmp1,tmp2);
- 
-  div64(tmp1,tmp3);
-  return tmp1[1];      
-}      
- 
-//return the seconds as a time mmm.ss, eventually hhh:mm too      
-unsigned long Trip::time(){      
-   //  return seconds*1000;      
-   unsigned char d = 60;      
-   unsigned long seconds = var[Trip::loopCount]/loopsPerSecond;     
-   return ((seconds/d)*1000) + ((seconds%d) * 10);       
-}      
- 
- 
-void Trip::reset(){      
-   var[Trip::loopCount]=0;      
-   var[Trip::injPulses]=0;      
-   var[Trip::injHius]=0;      
-   var[Trip::injHiSec]=0;      
-   var[Trip::vssPulses]=0;  
-   var[Trip::vssPulseLength]=0;
-   var[Trip::injIdleHiSec]=0;
-   var[Trip::injIdleHius]=0;
-   var[Trip::vssEOCPulses]=0;
-}      
- 
-void Trip::update(Trip t) {     
-   var[Trip::loopCount]++;  //we call update once per loop     
-   var[Trip::vssPulses]+=t.var[Trip::vssPulses];      
-   var[Trip::vssPulseLength]+=t.var[Trip::vssPulseLength];
-   if ( t.var[Trip::injPulses] == 0 )  //track distance traveled with engine off
-   var[Trip::vssEOCPulses]+=t.var[Trip::vssPulses];
-
-   if ( t.var[Trip::injPulses] > 2 && t.var[Trip::injHius]<500000 ) {// chasing ghosts      
-      var[Trip::injPulses]+=t.var[Trip::injPulses];      
-      var[Trip::injHius]+=t.var[Trip::injHius];      
-      if (var[Trip::injHius]>=1000000){  
-         // rollover into the var[Trip::injHiSec] counter      
-         var[Trip::injHiSec]++;      
-         var[Trip::injHius]-=1000000;      
-      }
-      if(t.var[Trip::vssPulses] == 0) {    
-         // track gallons spent sitting still
-         var[Trip::injIdleHius]+=t.var[Trip::injHius];      
-         if (var[Trip::injIdleHius]>=1000000) {  //r
-            var[Trip::injIdleHiSec]++;
-            var[Trip::injIdleHius]-=1000000;      
-         }      
-      }
-   }      
-}   
- 
 
  
 void bigNum (unsigned long t, char * txt1, char * txt2){      
