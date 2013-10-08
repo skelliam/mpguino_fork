@@ -65,9 +65,12 @@
 /* --- LCD line buffer size --- */
 #define bufsize                               17
 
+#define buttonTimeAccepted                    10
+
 /* --- Enums ------------------------------------------------- */
 
 enum displayTypes {dtText=0, dtBigChars, dtBarGraph};
+enum buttonNums {buttonLeft=0, buttonMiddle, buttonRight, buttonCount};
 
 /* --- Typedefs ---------------------------------------------- */
 
@@ -79,13 +82,13 @@ typedef void (* pFunc)(void);//type for display function pointers
 #define RightButtonPressed       (!(buttonState & rbuttonBit))
 #define MiddleButtonPressed      (!(buttonState & mbuttonBit))
 
-#define MIN(value1, value2)\
-    (((value1) >= (value2)) ? (value2) : (value1))
+#define LeftButtonAccepted       (buttonTimers[buttonLeft] > buttonTimeAccepted)
+#define RightButtonAccepted      (buttonTimers[buttonMiddle] > buttonTimeAccepted)
+#define MiddleButtonAccepted     (buttonTimers[buttonRight] > buttonTimeAccepted)
 
-#define MAX(value2, value1)\
-    (((value1)>=(value2)) ? (value1) : (value2))
+#define AnyButtonAccepted        (LeftButtonAccepted || RightButtonAccepted || MiddleButtonAccepted)
 
-#define length(x) (sizeof x / sizeof *x)
+
 
 #if (CFG_IDLE_MESSAGE == 1)
 #define IdleDisplayRequested     (IDLE_DISPLAY_DELAY > 0)
