@@ -1,3 +1,6 @@
+#ifndef PARMS_H
+#define PARMS_H
+
 #define loopsPerSecond                         2   
 #define looptime 1000000ul/loopsPerSecond /* 0.5 second */
 
@@ -17,3 +20,5 @@ enum longparms { contrastIdx = 0,
 
 extern unsigned long parms[parmsCount];
 extern char *parmLabels[parmsCount];
+
+#endif

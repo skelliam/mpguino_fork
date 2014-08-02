@@ -45,7 +45,7 @@ volatile unsigned long timer2_overflow_count;
 
 
 #if (CFG_BIGFONT_TYPE == 1)
-  static char chars[] PROGMEM = {
+  static const char chars[] PROGMEM = {
     B11111, B00000, B11111, B11111, B00000,
     B11111, B00000, B11111, B11111, B00000,
     B11111, B00000, B11111, B11111, B00000,
@@ -57,7 +57,7 @@ volatile unsigned long timer2_overflow_count;
 #elif (CFG_BIGFONT_TYPE == 2)
   /* XXX: For whatever reason I can not figure out how 
    * to store more than 8 chars in the LCD CGRAM */
-  static char chars[] PROGMEM = {
+  static const char chars[] PROGMEM = {
     B11111, B00000, B11111, B11111, B00000, B11111, B00111, B11100, 
     B11111, B00000, B11111, B11111, B00000, B11111, B01111, B11110, 
     B00000, B00000, B00000, B11111, B00000, B11111, B11111, B11111, 
@@ -70,7 +70,7 @@ volatile unsigned long timer2_overflow_count;
 
 #if (BARGRAPH_DISPLAY_CFG == 1)
   const unsigned char LcdBarChars = 7;
-  static char barchars[] PROGMEM = {
+  static const char barchars[] PROGMEM = {
     B00000, B00000, B00000, B00000, B00000, B00000, B00000, 
     B00000, B00000, B00000, B00000, B00000, B00000, B11111, 
     B00000, B00000, B00000, B00000, B00000, B11111, B11111, 
@@ -268,7 +268,7 @@ pFunc displayFuncs[] ={
 
 #define displayFuncSize (sizeof(displayFuncs)/sizeof(pFunc)) //array size      
 
-prog_char  * displayFuncNames[displayFuncSize]; 
+const char * displayFuncNames[displayFuncSize]; 
 unsigned char newRun = 0;
 
 void setup (void) {
@@ -679,7 +679,7 @@ char *format(unsigned long num) {
 }
  
 //get a string from flash 
-char *getStr(prog_char * str) { 
+char *getStr(const char * str) { 
    static char mBuff[17]; //used by getStr 
    strcpy_P(mBuff, str); 
    return mBuff; 

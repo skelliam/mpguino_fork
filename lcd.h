@@ -23,9 +23,9 @@
 //LCD prototype      
 namespace LCD{      
   void gotoXY(unsigned char x, unsigned char y);      
-  void print(char * string);      
+  void print(const char * string);      
   void init();      
-  void writeCGRAM(char *newchars, unsigned char numnew);
+  void writeCGRAM(const char *newchars, unsigned char numnew);
   void tickleEnable();      
   void cmdWriteSet();      
   void LcdCommandWrite(unsigned char value);      

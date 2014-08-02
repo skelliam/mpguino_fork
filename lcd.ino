@@ -17,7 +17,7 @@ void LCD::gotoXY(unsigned char x, unsigned char y){
   LCD::LcdCommandWrite(dr);        
 }      
  
-void LCD::print(char * string){      
+void LCD::print(const char * string){      
   unsigned char x = 0;      
   char c = string[x];      
   while(c != 0){      
@@ -55,7 +55,7 @@ void LCD::init(){
   LcdCommandWrite(LCD_SetDDRAM);           // set dram to zero
 }
 
-void  LCD::writeCGRAM(char *newchars, unsigned char numnew) {
+void  LCD::writeCGRAM(const char *newchars, unsigned char numnew) {
    unsigned char x, y;
    LcdCommandWrite(LCD_EntryMode | LCD_EntryMode_Increment);
    LcdCommandWrite(LCD_SetCGRAM | 0x08);  // write to CGen RAM

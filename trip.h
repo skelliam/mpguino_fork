@@ -1,3 +1,6 @@
+#ifndef TRIP_H
+#define TRIP_H
+
 class Trip{      
    public:      
      enum varnames { loopCount=0, 
@@ -39,4 +42,4 @@ class Trip{
      Trip();      
 };      
  
-
+#endif
