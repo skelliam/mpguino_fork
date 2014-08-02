@@ -7,6 +7,7 @@
 #define LCD_BottomLine                      1
 #define LcdCharHeightPix                    8
 
+//sometime we should not need to extern these
 #if (CFG_BIGFONT_TYPE)
 extern const char chars[];
 extern const unsigned char LcdNewChars;
@@ -20,4 +21,5 @@ extern const unsigned char LcdBarChars;
 extern const char ascii_barmap[];
 #endif
 
+static void putCharsToLCD(LiquidCrystal*, const char*, unsigned char);
 #endif

@@ -1,7 +1,6 @@
 #include <WString.h>
 #include <EEPROM.h>
 #include "mpguino.h"
-//#include "lcd.h"
 #include <LiquidCrystal.h>
 #include "utils.h"
 #include "trip.h"
@@ -232,8 +231,9 @@ void setup (void) {
    CLOCK = 0;
    SCREEN = 0;
    HOLD_DISPLAY = 0;
-
+#if (CFG_SERIAL_TX)
    Serial.begin(9600);
+#endif
 
    #if (CFG_IDLE_MESSAGE != 0)
    IDLE_DISPLAY_DELAY = 0;
