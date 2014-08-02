@@ -9,7 +9,6 @@
 #include "parms.h"
 #include "lcdchars.h"
 
-#define LCD_BottomLine 1
 
 //define the event IDs
 #define enableVSSID 0
@@ -234,6 +233,8 @@ void setup (void) {
    SCREEN = 0;
    HOLD_DISPLAY = 0;
 
+   Serial.begin(9600);
+
    #if (CFG_IDLE_MESSAGE != 0)
    IDLE_DISPLAY_DELAY = 0;
    #endif
@@ -270,20 +271,11 @@ void setup (void) {
 
    pinMode(ContrastPin,OUTPUT);      
    analogWrite(ContrastPin,parms[contrastIdx]);  
-#if (0)
-   LCD::init();      
-   LCD::LcdCommandWrite(LCD_ClearDisplay);            // clear display, set cursor position to zero         
-   LCD::LcdCommandWrite(LCD_SetDDRAM);                // set dram to zero
-   LCD::print(getStr(PSTR("OpenGauge       ")));      
-   LCD::gotoXY(0,LCD_BottomLine);      
-   LCD::print(getStr(PSTR("  MPGuino v0.75S")));
-#else
    mylcd.begin(16, 2);
    mylcd.clear();
    mylcd.print(getStr(PSTR("OpenGauge       ")));
    mylcd.setCursor(0,LCD_BottomLine);
    mylcd.print(getStr(PSTR("  MPGuino v0.75S")));
-#endif
 
    pinMode(InjectorOpenPin, INPUT);       
    pinMode(InjectorClosedPin, INPUT);       
@@ -395,11 +387,7 @@ void loop (void) {
             analogWrite(BrightnessPin,brightness[0]);    //nitey night
             #endif
             #if (SLEEP_CFG & Sleep_lcd)
-#if (0)
-            LCD::LcdCommandWrite(LCD_DisplayOnOffCtrl);  //LCD off unless explicitly told ON
-#else
             mylcd.noDisplay();
-#endif
             #endif
             lastActivity = nil;
          }
@@ -411,14 +399,7 @@ void loop (void) {
             analogWrite(BrightnessPin,brightness[brightnessIdx]);    
             #endif
             #if (SLEEP_CFG & Sleep_lcd)
-#if (0)
-            /* Turn on the LCD again.  Display should be restored. */
-            LCD::LcdCommandWrite(LCD_DisplayOnOffCtrl | LCD_DisplayOnOffCtrl_DispOn);
-            /* TODO:  Does the above cause a problem if sleep happens during a settings mode? 
-             *        Said another way, we don't get the cursor back unless we ask for it. */
-#else
             mylcd.display();
-#endif
             #endif
             lastActivity=loopStart;
             current.reset();
@@ -494,52 +475,27 @@ void loop (void) {
          LCDBUF1[16] = 0;
          LCDBUF2[16] = 0;
 
-#if (0)
-         /* print line 1 */
-         LCD::LcdCommandWrite(LCD_ReturnHome);
-         LCD::print(LCDBUF1);
-
-         /* print line 2 */
-         LCD::gotoXY(0,LCD_BottomLine);
-         LCD::print(LCDBUF2);
-
-         LCD::LcdCommandWrite(LCD_ReturnHome);
-#else
          mylcd.home();
          mylcd.print(LCDBUF1);
          mylcd.setCursor(0, LCD_BottomLine);
          mylcd.print(LCDBUF2);
          mylcd.home();
-#endif
 
          /* --- see if any buttons were pressed, display a brief message if so --- */
          if (LeftButtonPressed && RightButtonPressed) {
             // left and right = initialize      
-#if (0)
-            LCD::print(getStr(PSTR("Setup ")));    
-#else
             mylcd.print(getStr(PSTR("Setup ")));
-#endif
             initGuino();  
          }
          else if (LeftButtonPressed && MiddleButtonPressed) {
             // left and middle = tank reset      
             tank.reset();      
-#if (0)
-            LCD::print(getStr(PSTR("Tank Reset ")));      
-#else
             mylcd.print(getStr(PSTR("Tank Reset ")));
-#endif
-
          }
          else if (MiddleButtonPressed && RightButtonPressed) {
             // right and middle = current reset      
             current.reset();      
-#if (0)
-            LCD::print(getStr(PSTR("Current Reset ")));      
-#else
             mylcd.print(getStr(PSTR("Current Reset ")));      
-#endif
          }
          #if (CFG_IDLE_MESSAGE == 1)
          else if ((LeftButtonPressed || RightButtonPressed) && (IdleDisplayRequested)) {
@@ -558,34 +514,20 @@ void loop (void) {
             else {
                SCREEN=length(displayFuncs)-1;      
             }
-#if (0)
-            LCD::print(getStr(displayFuncNames[SCREEN]));      
-#else
             mylcd.print(getStr(displayFuncNames[SCREEN]));      
-#endif
          }
          else if (MiddleButtonPressed) {
             // middle is cycle through brightness settings      
             brightnessIdx = (brightnessIdx + 1) % length(brightness);      
             analogWrite(BrightnessPin,brightness[brightnessIdx]);      
-#if (0)
-            LCD::print(getStr(PSTR("Brightness ")));      
-            LCD::LcdDataWrite(getAsciiFromDigit(brightnessIdx));      
-            LCD::print(" ");      
-#else
             mylcd.print(getStr(PSTR("Brightness ")));      
             mylcd.print(getAsciiFromDigit(brightnessIdx));      
             mylcd.print(" ");      
-#endif
          }
          else if (RightButtonPressed) {
             // right is rotate through screeens to the left      
             SCREEN=(SCREEN+1)%length(displayFuncs);      
-#if (0)
-            LCD::print(getStr(displayFuncNames[SCREEN]));      
-#else
             mylcd.print(getStr(displayFuncNames[SCREEN]));      
-#endif
          }      
 
          #if (CFG_IDLE_MESSAGE == 1)
@@ -768,7 +710,7 @@ void doDisplayBarGraph(void) {
 
    /* Load the bargraph characters if necessary */
    if (DISPLAY_TYPE != dtBarGraph) {
-      //LCD::writeCGRAM(&barchars[0], LcdBarChars);
+      putCharsToLCD(&mylcd, &barchars[0], LcdBarChars);
       DISPLAY_TYPE = dtBarGraph;
    }
 
@@ -960,7 +902,7 @@ void bigNum (unsigned long t, char * txt1, char * txt2){
   char decimalpoint = ' ';       // decimal point is a space
   char *r = "009.99";            // default to 999
   if (DISPLAY_TYPE != dtBigChars) {
-     //LCD::writeCGRAM(&chars[0], LcdNewChars);
+     putCharsToLCD(&mylcd, &chars[0], LcdNewChars);
      DISPLAY_TYPE = dtBigChars;
   }
   if(t<=99500){ 
@@ -1107,21 +1049,12 @@ void editParm(unsigned char parmIdx) {
    /* -- write to display -- */
    LCDBUF1[16] = 0; 
    LCDBUF2[16] = 0;
-#if (0)
-   LCD::LcdCommandWrite(LCD_ClearDisplay);
-   LCD::print(LCDBUF1);
-   LCD::gotoXY(0,LCD_BottomLine);    
-   LCD::print(LCDBUF2);
 
-   /* -- turn the cursor on -- */
-   LCD::LcdCommandWrite(LCD_DisplayOnOffCtrl | LCD_DisplayOnOffCtrl_DispOn | LCD_DisplayOnOffCtrl_CursOn);
-#else
    mylcd.clear();
    mylcd.print(LCDBUF1);
    mylcd.setCursor(0, LCD_BottomLine);
    mylcd.print(LCDBUF2);
    mylcd.cursor();  /* cursor on */
-#endif
 
 #if (CFG_NICE_CURSOR)
    //do a nice thing and put the cursor at the first non zero number
@@ -1136,15 +1069,9 @@ void editParm(unsigned char parmIdx) {
 #endif
 
    while (true) {
-#if (0)
-      if (position<Pos_OK) LCD::gotoXY(position,LCD_BottomLine);   
-      if (position==Pos_OK) LCD::gotoXY(Pos_Cancel,LCD_BottomLine);   
-      if (position==Pos_Cancel) LCD::gotoXY(14,LCD_BottomLine);   
-#else
       if (position<Pos_OK) mylcd.setCursor(position,LCD_BottomLine);   
       if (position==Pos_OK) mylcd.setCursor(Pos_Cancel,LCD_BottomLine);   
       if (position==Pos_Cancel) mylcd.setCursor(14,LCD_BottomLine);   
-#endif
 
       if (keyLock == 0) { 
          if (LeftButtonPressed && RightButtonPressed) {
@@ -1174,21 +1101,13 @@ void editParm(unsigned char parmIdx) {
          } 
          else if (MiddleButtonPressed) {
             if (position==Pos_Cancel) {  //cancel selected
-#if (0)
-               LCD::LcdCommandWrite(B00001100);
-#else
                mylcd.clear();
                mylcd.home();
-#endif
                return;
             }
             if (position==Pos_OK) {  //ok selected
-#if (0)
-               LCD::LcdCommandWrite(B00001100);
-#else
                mylcd.clear();
                mylcd.home();
-#endif
                parms[parmIdx]=rformat(fmtv);
                return;
             }
@@ -1199,15 +1118,9 @@ void editParm(unsigned char parmIdx) {
             if (thisnumber > 9) thisnumber=0;  //wrap around
             if (position==Pos_MinInput && thisnumber > 3) thisnumber=0; 
             fmtv[position]=getAsciiFromDigit(thisnumber);
-#if (0)
-            LCD::gotoXY(0,LCD_BottomLine);        
-            LCD::print(fmtv);
-            LCD::gotoXY(position,LCD_BottomLine);        
-#else
             mylcd.setCursor(0,LCD_BottomLine);        
             mylcd.print(fmtv);
             mylcd.setCursor(position,LCD_BottomLine);        
-#endif
 
             if (parmIdx==contrastIdx) analogWrite(ContrastPin,rformat(fmtv));  
          }  /* middle button */
