@@ -6,6 +6,18 @@
 #include "trip.h"
 #include "mathfuncs.h"
 #include "parms.h"
+#include "lcdchars.h"
+
+
+#define getLength(array) (sizeof(array)/sizeof(array[0]))
+
+//define the event IDs
+#define enableVSSID 0
+#define enableLButtonID 1
+#define enableMButtonID 2
+#define enableRButtonID 3
+
+
 
 /* --- Global Variable Declarations -------------------------- */
 unsigned long MAXLOOPLENGTH = 0;            // see if we are overutilizing the CPU      
@@ -39,94 +51,45 @@ volatile bool lastVssFlop = vssFlop;
 unsigned char brightness[]={255,214,171,128};
 unsigned char brightnessIdx=1;
 
-#define brightnessLength (sizeof(brightness)/sizeof(unsigned char)) //array size
-
 volatile unsigned long timer2_overflow_count;
 
 unsigned char buttonState = buttonsUp;      
  
 //overflow counter used by millis2()      
 unsigned long lastMicroSeconds=millis2() * 1000;   
-#define displayFuncSize (sizeof(displayFuncs)/sizeof(pFunc)) //array size      
-const char * displayFuncNames[displayFuncSize]; 
 unsigned char newRun = 0;
 extern int  __bss_end; 
 extern int  *__brkval; 
 
+/* the display function poitners */
+pFunc displayFuncs[] = { 
+   doDisplayCustom, 
+   doDisplayInstantCurrent, 
+   doDisplayInstantTank, 
+   doDisplayBigInstant, 
+   doDisplayBigCurrent, 
+   doDisplayBigTank, 
+   doDisplayCurrentTripData, 
+   doDisplayTankTripData, 
+   doDisplayEOCIdleData, 
+   doDisplaySystemInfo,
+   #if (BARGRAPH_DISPLAY_CFG == 1)
+   doDisplayBarGraph,
+   #endif
+   #if (DTE_CFG == 1)
+   doDisplayBigDTE,
+   #endif
+};      
+
+const char * displayFuncNames[getLength(displayFuncs)];
+
 //array of the event functions
 pFunc eventFuncs[] ={enableVSS, enableLButton, enableMButton, enableRButton};
-#define eventFuncSize (sizeof(eventFuncs)/sizeof(pFunc)) 
-
-//define the event IDs
-#define enableVSSID 0
-#define enableLButtonID 1
-#define enableMButtonID 2
-#define enableRButtonID 3
 
 //ms counters
-unsigned int eventFuncCounts[eventFuncSize];
+unsigned int eventFuncCounts[getLength(eventFuncs)];
 
 
-
-#if (CFG_BIGFONT_TYPE == 1)
-  static const char chars[] PROGMEM = {
-    B11111, B00000, B11111, B11111, B00000,
-    B11111, B00000, B11111, B11111, B00000,
-    B11111, B00000, B11111, B11111, B00000,
-    B00000, B00000, B00000, B11111, B00000,
-    B00000, B00000, B00000, B11111, B00000,
-    B00000, B11111, B11111, B11111, B01110,
-    B00000, B11111, B11111, B11111, B01110,
-    B00000, B11111, B11111, B11111, B01110};
-#elif (CFG_BIGFONT_TYPE == 2)
-  /* XXX: For whatever reason I can not figure out how 
-   * to store more than 8 chars in the LCD CGRAM */
-  static const char chars[] PROGMEM = {
-    B11111, B00000, B11111, B11111, B00000, B11111, B00111, B11100, 
-    B11111, B00000, B11111, B11111, B00000, B11111, B01111, B11110, 
-    B00000, B00000, B00000, B11111, B00000, B11111, B11111, B11111, 
-    B00000, B00000, B00000, B11111, B00000, B11111, B11111, B11111, 
-    B00000, B00000, B00000, B11111, B00000, B11111, B11111, B11111, 
-    B00000, B00000, B00000, B11111, B01110, B11111, B11111, B11111,
-    B00000, B11111, B11111, B01111, B01110, B11110, B11111, B11111,
-    B00000, B11111, B11111, B00111, B01110, B11100, B11111, B11111};
-#endif
-
-#if (BARGRAPH_DISPLAY_CFG == 1)
-  const unsigned char LcdBarChars = 7;
-  static const char barchars[] PROGMEM = {
-    B00000, B00000, B00000, B00000, B00000, B00000, B00000, 
-    B00000, B00000, B00000, B00000, B00000, B00000, B11111, 
-    B00000, B00000, B00000, B00000, B00000, B11111, B11111, 
-    B00000, B00000, B00000, B00000, B11111, B11111, B11111, 
-    B00000, B00000, B00000, B11111, B11111, B11111, B11111, 
-    B00000, B00000, B11111, B11111, B11111, B11111, B11111, 
-    B00000, B11111, B11111, B11111, B11111, B11111, B11111, 
-    B11111, B11111, B11111, B11111, B11111, B11111, B11111};
-
-  /* map numbers to bar segments.  Example:
-   * ascii_barmap[10] --> all eight segments filled in
-   * ascii_barmap[4]  --> four segments filled in */
-  char ascii_barmap[] = {0x20, 0x01, 0x02, 0x03, 0x04, 0x05, 
-                         0x06, 0x07, 0xFF, 0xFF, 0xFF}; 
-#endif
-
-#if (CFG_BIGFONT_TYPE == 1)
-   /* 32 = 0x20 = space */
-   const unsigned char LcdNewChars = 5;
-   char bignumchars1[]={4,1,4,0, 1,4,32,0, 3,3,4,0, 1,3,4,0, 4,2,4,0, 
-                        4,3,3,0,  4,3,3,0, 1,1,4,0, 4,3,4,0, 4,3,4,0}; 
-   char bignumchars2[]={4,2,4,0, 2,4,2,0,   4,2,2,0, 2,2,4,0, 32,32,4,0, 
-                        2,2,4,0, 4,2,4,0, 32,4,32,0, 4,2,4,0,   2,2,4,0};  
-#elif (CFG_BIGFONT_TYPE == 2)
-   /* 32 = 0x20 = space */
-   /* 255 = 0xFF = all black character */
-   const unsigned char LcdNewChars = 8;
-   char bignumchars1[]={  7,1,8,0,  1,255,32,0,   3,3,8,0, 1,3,8,0, 255,2,255,0,  
-                        255,3,3,0,     7,3,3,0,   1,1,6,0, 7,3,8,0,     7,3,8,0};
-   char bignumchars2[]={  4,2,6,0, 32,255,32,0, 255,2,2,0, 2,2,6,0, 32,32,255,0,
-                          2,2,6,0,     4,2,6,0, 32,7,32,0, 4,2,6,0,     2,2,6,0};
-#endif
 
 
 /* --- End Global Variable Declarations ---------------------- */
@@ -171,7 +134,7 @@ void addEvent(unsigned char eventID, unsigned int ms) {
 ISR(TIMER2_OVF_vect) {
    unsigned char eventID;
    timer2_overflow_count++;
-   for(eventID = 0; eventID < eventFuncSize; eventID++) {
+   for(eventID = 0; eventID < getLength(eventFuncs); eventID++) {
       if(eventFuncCounts[eventID]!= 0) {
          eventFuncCounts[eventID]--;
          if(eventFuncCounts[eventID] == 0) {
@@ -262,25 +225,6 @@ ISR(PCINT1_vect) {
 } /* ISR(PCINT1_vect) */
  
  
-pFunc displayFuncs[] ={ 
-   doDisplayCustom, 
-   doDisplayInstantCurrent, 
-   doDisplayInstantTank, 
-   doDisplayBigInstant, 
-   doDisplayBigCurrent, 
-   doDisplayBigTank, 
-   doDisplayCurrentTripData, 
-   doDisplayTankTripData, 
-   doDisplayEOCIdleData, 
-   doDisplaySystemInfo,
-   #if (BARGRAPH_DISPLAY_CFG == 1)
-   doDisplayBarGraph,
-   #endif
-   #if (DTE_CFG == 1)
-   doDisplayBigDTE,
-   #endif
-};      
-
 
 void setup (void) {
    unsigned char x = 0;
@@ -574,13 +518,13 @@ void loop (void) {
                 SCREEN = (SCREEN-1);       
             }
             else {
-               SCREEN=displayFuncSize-1;      
+               SCREEN=getLength(displayFuncs)-1;      
             }
             LCD::print(getStr(displayFuncNames[SCREEN]));      
          }
          else if (MiddleButtonPressed) {
             // middle is cycle through brightness settings      
-            brightnessIdx = (brightnessIdx + 1) % brightnessLength;      
+            brightnessIdx = (brightnessIdx + 1) % getLength(brightness);      
             analogWrite(BrightnessPin,brightness[brightnessIdx]);      
             LCD::print(getStr(PSTR("Brightness ")));      
             LCD::LcdDataWrite(getAsciiFromDigit(brightnessIdx));      
@@ -588,7 +532,7 @@ void loop (void) {
          }
          else if (RightButtonPressed) {
             // right is rotate through screeens to the left      
-            SCREEN=(SCREEN+1)%displayFuncSize;      
+            SCREEN=(SCREEN+1)%getLength(displayFuncs);      
             LCD::print(getStr(displayFuncNames[SCREEN]));      
          }      
 
