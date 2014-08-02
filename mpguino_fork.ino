@@ -2,7 +2,7 @@
 #include <EEPROM.h>
 #include "mpguino.h"
 #include "lcd.h"
-#include "macros.h"
+#include "utils.h"
 #include "trip.h"
 #include "mathfuncs.h"
 #include "parms.h"
@@ -42,6 +42,30 @@ unsigned char brightnessIdx=1;
 #define brightnessLength (sizeof(brightness)/sizeof(unsigned char)) //array size
 
 volatile unsigned long timer2_overflow_count;
+
+unsigned char buttonState = buttonsUp;      
+ 
+//overflow counter used by millis2()      
+unsigned long lastMicroSeconds=millis2() * 1000;   
+#define displayFuncSize (sizeof(displayFuncs)/sizeof(pFunc)) //array size      
+const char * displayFuncNames[displayFuncSize]; 
+unsigned char newRun = 0;
+extern int  __bss_end; 
+extern int  *__brkval; 
+
+//array of the event functions
+pFunc eventFuncs[] ={enableVSS, enableLButton, enableMButton, enableRButton};
+#define eventFuncSize (sizeof(eventFuncs)/sizeof(pFunc)) 
+
+//define the event IDs
+#define enableVSSID 0
+#define enableLButtonID 1
+#define enableMButtonID 2
+#define enableRButtonID 3
+
+//ms counters
+unsigned int eventFuncCounts[eventFuncSize];
+
 
 
 #if (CFG_BIGFONT_TYPE == 1)
@@ -119,22 +143,19 @@ Keep the event functions SMALL!!!  This is an interrupt!
 */
 //event functions
 
-void enableLButton(){PCMSK1 |= (1 << PCINT11);}
-void enableMButton(){PCMSK1 |= (1 << PCINT12);}
-void enableRButton(){PCMSK1 |= (1 << PCINT13);}
-//array of the event functions
-pFunc eventFuncs[] ={enableVSS, enableLButton, enableMButton, enableRButton};
-#define eventFuncSize (sizeof(eventFuncs)/sizeof(pFunc)) 
-//define the event IDs
-#define enableVSSID 0
-#define enableLButtonID 1
-#define enableMButtonID 2
-#define enableRButtonID 3
-//ms counters
-unsigned int eventFuncCounts[eventFuncSize];
+void enableLButton() {
+   PCMSK1 |= (1 << PCINT11);
+}
+void enableMButton(){
+   PCMSK1 |= (1 << PCINT12);
+}
+void enableRButton(){
+   PCMSK1 |= (1 << PCINT13);
+}
+
 
 //schedule an event to occur ms milliseconds from now
-void addEvent(unsigned char eventID, unsigned int ms){
+void addEvent(unsigned char eventID, unsigned int ms) {
    if(ms == 0) {
       eventFuncs[eventID]();
    }
@@ -160,10 +181,6 @@ ISR(TIMER2_OVF_vect) {
    }
 } /* ISR(TIMER2_OVF_vect) */
 
-unsigned char buttonState = buttonsUp;      
- 
-//overflow counter used by millis2()      
-unsigned long lastMicroSeconds=millis2() * 1000;   
 
 unsigned long microSeconds(void) {     
    unsigned long tmp_timer2_overflow_count;    
@@ -191,8 +208,6 @@ unsigned long elapsedMicroseconds(unsigned long startMicroSeconds, unsigned long
 unsigned long elapsedMicroseconds(unsigned long startMicroSeconds ){      
    return elapsedMicroseconds(startMicroSeconds, microSeconds());
 }      
- 
- 
 
 
 void processInjOpen(void){      
@@ -266,10 +281,6 @@ pFunc displayFuncs[] ={
    #endif
 };      
 
-#define displayFuncSize (sizeof(displayFuncs)/sizeof(pFunc)) //array size      
-
-const char * displayFuncNames[displayFuncSize]; 
-unsigned char newRun = 0;
 
 void setup (void) {
    unsigned char x = 0;
@@ -855,8 +866,6 @@ void tDisplay( void * r){ //display trip functions.
     
  
 // this function will return the number of bytes currently free in RAM      
-extern int  __bss_end; 
-extern int  *__brkval; 
 int memoryTest(){ 
   int free_memory; 
   if((int)__brkval == 0) 

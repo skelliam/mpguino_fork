@@ -1,3 +1,6 @@
+#ifndef MPGUINO_CONF_H
+#define MPGUINO_CONF_H
+
 /* --- Compile-time options ---------------------------------- */
 
 #define BARGRAPH_DISPLAY_CFG       1  /* 0=Off 1=On (+968 bytes) */
@@ -13,3 +16,5 @@
 /* --- TODO --- */
 #define CFG_UNITS                  1  /* 1=US  2=METRIC  */
 #define MULTIPLE_VEHICLE_CFG       0  /* 0=Off 1=On      */
+
+#endif

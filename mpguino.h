@@ -28,8 +28,8 @@
 
 #define nil                         3999999999ul
  
-#define guinosigold                    B10100101 
-#define guinosig                       B11100111 
+#define guinosigold                    (B10100101) 
+#define guinosig                       (B11100111) 
 
 //Vehicle Interface Pins      
 //#define NC                                   1
@@ -54,13 +54,13 @@
 #define rbuttonPin                            19  // Right Button, on analog 5
 
 /* --- Button bitmasks --- */ 
-#define vssBit                              0x01  //  pin14 is a bitmask 1 on port C
-#define lbuttonBit                          0x08  //  pin17 is a bitmask 8 on port C
-#define mbuttonBit                          0x10  //  pin18 is a bitmask 16 on port C
-#define rbuttonBit                          0x20  //  pin19 is a bitmask 32 on port C
+#define vssBit                              ((unsigned char)0x01)  //  pin14 is a bitmask 1 on port C
+#define lbuttonBit                          ((unsigned char)0x08)  //  pin17 is a bitmask 8 on port C
+#define mbuttonBit                          ((unsigned char)0x10)  //  pin18 is a bitmask 16 on port C
+#define rbuttonBit                          ((unsigned char)0x20)  //  pin19 is a bitmask 32 on port C
 
 // start with the buttons in the right state      
-#define buttonsUp   lbuttonBit + mbuttonBit + rbuttonBit
+#define buttonsUp   (lbuttonBit | mbuttonBit | rbuttonBit)
 
 /* --- LCD line buffer size --- */
 #define bufsize                               17
@@ -78,14 +78,6 @@ typedef void (* pFunc)(void);//type for display function pointers
 #define LeftButtonPressed        (!(buttonState & lbuttonBit))
 #define RightButtonPressed       (!(buttonState & rbuttonBit))
 #define MiddleButtonPressed      (!(buttonState & mbuttonBit))
-
-#define MIN(value1, value2)\
-    (((value1) >= (value2)) ? (value2) : (value1))
-
-#define MAX(value2, value1)\
-    (((value1)>=(value2)) ? (value1) : (value2))
-
-#define length(x) (sizeof x / sizeof *x)
 
 #if (CFG_IDLE_MESSAGE == 1)
 #define IdleDisplayRequested     (IDLE_DISPLAY_DELAY > 0)
