@@ -10,6 +10,6 @@
 #define MAX(value2, value1)\
     (((value1)>=(value2)) ? (value1) : (value2))
 
-#define length(x) (sizeof x / sizeof *x)
+#define length(x) (sizeof(x) / sizeof(*x))
 
 #endif

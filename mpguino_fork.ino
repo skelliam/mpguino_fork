@@ -8,16 +8,11 @@
 #include "parms.h"
 #include "lcdchars.h"
 
-
-#define getLength(array) (sizeof(array)/sizeof(array[0]))
-
 //define the event IDs
 #define enableVSSID 0
 #define enableLButtonID 1
 #define enableMButtonID 2
 #define enableRButtonID 3
-
-
 
 /* --- Global Variable Declarations -------------------------- */
 unsigned long MAXLOOPLENGTH = 0;            // see if we are overutilizing the CPU      
@@ -81,13 +76,13 @@ pFunc displayFuncs[] = {
    #endif
 };      
 
-const char * displayFuncNames[getLength(displayFuncs)];
+const char * displayFuncNames[length(displayFuncs)];
 
 //array of the event functions
 pFunc eventFuncs[] ={enableVSS, enableLButton, enableMButton, enableRButton};
 
 //ms counters
-unsigned int eventFuncCounts[getLength(eventFuncs)];
+unsigned int eventFuncCounts[length(eventFuncs)];
 
 
 
@@ -134,7 +129,7 @@ void addEvent(unsigned char eventID, unsigned int ms) {
 ISR(TIMER2_OVF_vect) {
    unsigned char eventID;
    timer2_overflow_count++;
-   for(eventID = 0; eventID < getLength(eventFuncs); eventID++) {
+   for(eventID = 0; eventID < length(eventFuncs); eventID++) {
       if(eventFuncCounts[eventID]!= 0) {
          eventFuncCounts[eventID]--;
          if(eventFuncCounts[eventID] == 0) {
@@ -518,13 +513,13 @@ void loop (void) {
                 SCREEN = (SCREEN-1);       
             }
             else {
-               SCREEN=getLength(displayFuncs)-1;      
+               SCREEN=length(displayFuncs)-1;      
             }
             LCD::print(getStr(displayFuncNames[SCREEN]));      
          }
          else if (MiddleButtonPressed) {
             // middle is cycle through brightness settings      
-            brightnessIdx = (brightnessIdx + 1) % getLength(brightness);      
+            brightnessIdx = (brightnessIdx + 1) % length(brightness);      
             analogWrite(BrightnessPin,brightness[brightnessIdx]);      
             LCD::print(getStr(PSTR("Brightness ")));      
             LCD::LcdDataWrite(getAsciiFromDigit(brightnessIdx));      
@@ -532,7 +527,7 @@ void loop (void) {
          }
          else if (RightButtonPressed) {
             // right is rotate through screeens to the left      
-            SCREEN=(SCREEN+1)%getLength(displayFuncs);      
+            SCREEN=(SCREEN+1)%length(displayFuncs);      
             LCD::print(getStr(displayFuncNames[SCREEN]));      
          }      
 
