@@ -314,7 +314,7 @@ void setup (void) {
    SCREEN = 0;
    HOLD_DISPLAY = 0;
 
-#if (CFG_SERIAL_TX)
+#if (CFG_SERIAL_TX) || (1)
    Serial.begin(19200);
 #endif
 
@@ -356,6 +356,12 @@ void updateSwitches(void) {
    //buttonState |= (lbouncer.read() ? lbuttonBit : 0);
    //buttonState |= (mbouncer.read() ? mbuttonBit : 0);
    //buttonState |= (rbouncer.read() ? rbuttonBit : 0);  
+}
+
+void updateDebounceInterval(int interval) {
+   lbouncer.interval(interval);
+   mbouncer.interval(interval);
+   rbouncer.interval(interval);
 }
 #endif
  
@@ -443,13 +449,13 @@ void loop (void) {
            )
          {
             #if (TANK_IN_EEPROM_CFG)
-            writeEepBlock32(eepBlkAddr_Tank, &tank.var[0], eepBlkSize_Tank);
+            writeEepBlock32(eepBlkAddr_Tank, &tank.var[0], eepBlkSize_Tank);  //write tank info to eeprom
             #endif
             #if (SLEEP_CFG & Sleep_bkl)
-            analogWrite(BrightnessPin,brightness[0]);    //nitey night
+            analogWrite(BrightnessPin,brightness[0]);    //backlight off
             #endif
             #if (SLEEP_CFG & Sleep_lcd)
-            mylcd.noDisplay();
+            mylcd.noDisplay();                           //lcd off
             #endif
             lastActivity = nil;
          }
@@ -458,10 +464,10 @@ void loop (void) {
          /* wake up! */
          if (lastActivity == nil) {
             #if (SLEEP_CFG & Sleep_bkl)
-            analogWrite(BrightnessPin,brightness[brightnessIdx]);    
+            analogWrite(BrightnessPin,brightness[brightnessIdx]);  //backlight on
             #endif
             #if (SLEEP_CFG & Sleep_lcd)
-            mylcd.display();
+            mylcd.display();  //display on
             #endif
             lastActivity=loopStart;
             current.reset();
@@ -544,23 +550,23 @@ void loop (void) {
 #endif
 
          /* --- see if any buttons were pressed, display a brief message if so --- */
-         if (LeftButtonPressed && RightButtonPressed) {
+         if (LeftButtonPressed() && RightButtonPressed()) {
             // left and right = initialize      
             mylcd.print(getStr(PSTR("Setup ")));
             initGuino();  
          }
-         else if (LeftButtonPressed && MiddleButtonPressed) {
+         else if (LeftButtonPressed() && MiddleButtonPressed()) {
             // left and middle = tank reset      
             tank.reset();      
             mylcd.print(getStr(PSTR("Tank Reset ")));
          }
-         else if (MiddleButtonPressed && RightButtonPressed) {
+         else if (MiddleButtonPressed() && RightButtonPressed()) {
             // right and middle = current reset      
             current.reset();      
             mylcd.print(getStr(PSTR("Current Reset ")));      
          }
          #if (CFG_IDLE_MESSAGE == 1)
-         else if ((LeftButtonPressed || RightButtonPressed) && (IdleDisplayRequested)) {
+         else if ((LeftButtonPressed() || RightButtonPressed()) && (IdleDisplayRequested)) {
             /* if the idle display is up and the user hits the left or right button,
              * intercept this press (nonoe of the elseifs will be hit below) 
              * only in this circumstance and get out of the idle display for a while.
@@ -568,7 +574,7 @@ void loop (void) {
             IDLE_DISPLAY_DELAY = -60;
          }
          #endif
-         else if (LeftButtonPressed) {
+         else if (LeftButtonPressed()) {
             // left is rotate through screeens to the left      
             if (SCREEN!=0) {
                 SCREEN = (SCREEN-1);       
@@ -578,7 +584,7 @@ void loop (void) {
             }
             mylcd.print(getStr(displayFuncNames[SCREEN]));      
          }
-         else if (MiddleButtonPressed) {
+         else if (MiddleButtonPressed()) {
             // middle is cycle through brightness settings      
             brightnessIdx = (brightnessIdx + 1) % length(brightness);      
             analogWrite(BrightnessPin,brightness[brightnessIdx]);      
@@ -586,14 +592,14 @@ void loop (void) {
             mylcd.print(getAsciiFromDigit(brightnessIdx));      
             mylcd.print(" ");      
          }
-         else if (RightButtonPressed) {
+         else if (RightButtonPressed()) {
             // right is rotate through screeens to the left      
             SCREEN=(SCREEN+1)%length(displayFuncs);      
             mylcd.print(getStr(displayFuncNames[SCREEN]));      
          }      
 
          #if (CFG_IDLE_MESSAGE == 1)
-         if (LeftButtonPressed || RightButtonPressed) {
+         if (LeftButtonPressed() || RightButtonPressed()) {
             /* When the user wants to change screens, continue to 
              * avoid the idle screen for a while */
             IDLE_DISPLAY_DELAY = -60;
@@ -1147,7 +1153,7 @@ void editParm(unsigned char parmIdx) {
       if (position==Pos_Cancel) mylcd.setCursor(14,LCD_BottomLine);   
 
       if (keyLock == 0) { 
-         if (LeftButtonPressed && RightButtonPressed) {
+         if (LeftButtonPressed() && RightButtonPressed()) {
          if (position<Pos_OK) position=Pos_OK;
          else if (position==Pos_OK) position=Pos_Cancel;
          #if (CFG_NICE_CURSOR)
@@ -1164,15 +1170,15 @@ void editParm(unsigned char parmIdx) {
          }
          #endif
          } 
-         else if (LeftButtonPressed) {
+         else if (LeftButtonPressed()) {
             position -= 1;
             if (position==255) position=Pos_Cancel;
          } 
-         else if (RightButtonPressed) {
+         else if (RightButtonPressed()) {
             position += 1;
             if (position==Pos_Max) position=Pos_MinInput;
          } 
-         else if (MiddleButtonPressed) {
+         else if (MiddleButtonPressed()) {
             if (position==Pos_Cancel) {  //cancel selected
                mylcd.clear();
                mylcd.home();
@@ -1214,31 +1220,78 @@ void editParm(unsigned char parmIdx) {
 }  /* editParm() */
 
 void initGuino() { 
+   int x = 0;
+   char *test = "12345";
 
    Screen screen(16, 2);  /* need to change for different LCD */
-   Label  lblContrast("Contrast:");
-   Label    lblVsscal("Puls/mi:");
-   Label   lblFuelcal("us/gal:");
-   Label lblPulsesrev("puls/2revs:");
-   Label   lblTimeout("Timeout:");
-   Label  lblTanksize("Tank gals:");
-   Label  lblInjdelay("inj delay:");
-   Label    lblWeight("weight:");
-   Label   lblScratch("scratchpad:");
-   Label  lblVssdelay("vss delay:");
-   Label  lblFuelcost("fuel cost:");
+                 //    123456789ABCDEF
+   Label  lblContrast("Cntrast:");    //8
+   Label    lblVsscal("Pls/mi:");     //7
+   Label   lblFuelcal("us/gal:");     //7
+   Label lblPulsesrev("pls/2revs:");  //A
+   Label   lblTimeout("Timeout:");    //8
+   Label  lblTanksize("Tank_gal:");   //9
+   Label  lblInjdelay("inj_dlay:");   //9
+   Label    lblWeight("Weight:");     //7
+   Label   lblScratch("Memo:");       //5
+   Label  lblVssdelay("Vss_dlay:");   //9
+   Label  lblFuelcost("Fuelcost:");   //9
 
-   screen.add(&lblContrast, 0, 1);
-   screen.add(&lblVsscal, 0, 2);
-   screen.add(&lblFuelcal, 0, 3);
-   screen.add(&lblPulsesrev, 0, 4);
+   Input inpContrast(test);
+   Input inpVsscal(test);
+   Input inpFuelcal(test);
+   Input inpPulsesrev(test);
+   Input inpTimeout(test);
+   Input inpTanksize(test);
+   Input inpInjdelay(test);
+   Input inpWeight(test);
+   Input inpScratch(test);
+   Input inpVssdelay(test);
+   Input inpFuelcost(test);
+
+   Button cancelButton("Cancel");
+   Button okButton("Ok");
+   // This line creates the ScrollContainer, passing the screen it will be attached
+   // to and the width and height for the new ScrollContainer.
+   ScrollContainer sc(&screen, screen.width(), 2);
+   
+   sc.add(&lblContrast, 0, x);
+   sc.add(&inpContrast, 9, x++);
+
+   sc.add(&lblVsscal, 0, x);
+   sc.add(&inpVsscal, 8, x++);
+
+   sc.add(&lblFuelcal, 0, x);
+   sc.add(&inpFuelcal, 8, x++);
+
+
+   sc.add(&lblPulsesrev, 0, x++);
+
+   sc.add(&lblTimeout, 0, x++);
+   sc.add(&lblTanksize, 0, x++);
+   sc.add(&lblInjdelay, 0, x++);
+   sc.add(&lblWeight, 0, x++);
+   sc.add(&lblScratch, 0, x++);
+   sc.add(&lblVssdelay, 0, x++);
+   sc.add(&lblFuelcost, 0, x++);
+
+   //ok and cancel buttons at the end
+   sc.add(&okButton, 0, x); 
+   sc.add(&cancelButton, 5, x++);
+
+   screen.add(&sc, 0, 0);
+
+#if (CFG_DEBOUNCE_SWITCHES)
+   updateDebounceInterval(10);
+#endif
 
    while(1) {
-#if (CFG_DEBOUNCE_SWITCHES)
-      updateSwitches();
-#endif
       screen.update();
    }
+
+#if (CFG_DEBOUNCE_SWITCHES)
+   updateDebounceInterval(5);
+#endif
 
    #if (0)
    //edit all the parameters
@@ -1249,6 +1302,7 @@ void initGuino() {
 
    save();
    HOLD_DISPLAY=1;
+
 }  
 
 unsigned long millis2(){

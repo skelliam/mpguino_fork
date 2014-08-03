@@ -81,15 +81,18 @@ typedef void (* pFunc)(void);//type for display function pointers
 #define buttonsUp                (lbuttonBit | mbuttonBit | rbuttonBit)
 #define SetButtonsUp()           (buttonState = buttonsUp)
 #define AllButtonsUp()           (buttonState == buttonsUp)
-#define LeftButtonPressed        (!(buttonState & lbuttonBit))
-#define RightButtonPressed       (!(buttonState & rbuttonBit))
-#define MiddleButtonPressed      (!(buttonState & mbuttonBit))
+#define LeftButtonPressed()      (!(buttonState & lbuttonBit))
+#define RightButtonPressed()     (!(buttonState & rbuttonBit))
+#define MiddleButtonPressed()    (!(buttonState & mbuttonBit))
 #else
 #define SetButtonsUp()           {;}
-#define LeftButtonPressed        (lbouncer.read())
-#define RightButtonPressed       (rbouncer.read())
-#define MiddleButtonPressed      (mbouncer.read())
-#define AllButtonsUp()           (!LeftButtonPressed && !RightButtonPressed && !MiddleButtonPressed)
+#define LeftButtonPressed()      (lbouncer.read())
+#define RightButtonPressed()     (rbouncer.read())
+#define MiddleButtonPressed()    (mbouncer.read())
+#define LeftButtonChanged()      (lbouncer.update() == true)
+#define RightButtonChanged()     (rbouncer.update() == true)
+#define MiddleButtonChanged()    (mbouncer.update() == true)
+#define AllButtonsUp()           (!LeftButtonPressed() && !RightButtonPressed() && !MiddleButtonPressed())
 #endif
 
 #if (CFG_IDLE_MESSAGE == 1)

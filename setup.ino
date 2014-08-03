@@ -1,3 +1,5 @@
+/* This file is for the fancy UI setup screens */
+
 #include <ScreenUi.h>
 #include "LiquidCrystalExtend.h"
 
@@ -19,11 +21,22 @@ extern LiquidCrystalExtend mylcd;
 // have the D pad control x and y, the A button control selected and the B button
 // control cancelled.
 void Screen::getInputDeltas(int *x, int *y, bool *selected, bool *cancelled) {
-  *x = 0;
-  *y += (LeftButtonPressed ? 1 : RightButtonPressed ? -1 : 0);
-  *selected = (MiddleButtonPressed);
-  *cancelled = 0;
-  //Encoder.setCount(0);
+   int temp = 0;
+
+   this->setCursorVisible(true);
+
+   if (LeftButtonChanged() && LeftButtonPressed()) {
+      temp = -1;
+   }
+   else if (RightButtonChanged() && RightButtonPressed()) {
+      temp = 1;
+   }
+   
+   *x = 0;
+   *y = temp;
+   *selected = (MiddleButtonChanged() && MiddleButtonPressed());
+   *cancelled = 0;
+   //Encoder.setCount(0);
 }
 
 // User defined method that clears the output device completely.
