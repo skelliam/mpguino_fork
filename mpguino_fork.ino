@@ -1,7 +1,7 @@
 
 #include <WString.h>
 #include <EEPROM.h>
-#include <LiquidCrystal.h>
+#include "LiquidCrystalExtend.h"
 
 #include "mpguino.h"
 #include "utils.h"
@@ -9,10 +9,11 @@
 #include "mathfuncs.h"
 #include "parms.h"
 #include "lcdchars.h"
+#if (CFG_DEBOUNCE_SWITCHES)
+#include "Bounce2_mod.h"
+#endif
 
 #include <ScreenUi.h>  //may need to rename ScreenUi.cpp --> .ino before import
-#include <Bounce2.h>
-
 
 //define the event IDs
 #define enableVSSID 0
@@ -21,13 +22,14 @@
 #define enableRButtonID 3
 
 /* --- Global Variable Declarations -------------------------- */
-LiquidCrystal mylcd(DIPin, EnablePin, DB4Pin, DB5Pin, DB6Pin, DB7Pin);
+
+
+LiquidCrystalExtend mylcd(DIPin, EnablePin, DB4Pin, DB5Pin, DB6Pin, DB7Pin);
+
 #if (CFG_DEBOUNCE_SWITCHES)
 Bounce lbouncer = Bounce();  /* debounce library */
 Bounce mbouncer = Bounce();
 Bounce rbouncer = Bounce();
-unsigned char UPDATE_READY = 0;
-unsigned char BUTTONS = 0;
 #endif
 
 unsigned long MAXLOOPLENGTH = 0;            // see if we are overutilizing the CPU      
@@ -63,7 +65,9 @@ unsigned char brightnessIdx=1;
 
 volatile unsigned long timer2_overflow_count;
 
+#if (!CFG_DEBOUNCE_SWITCHES)
 unsigned char buttonState = buttonsUp;      
+#endif
  
 //overflow counter used by millis2()      
 unsigned long lastMicroSeconds=millis2() * 1000;   
@@ -232,39 +236,60 @@ ISR(PCINT1_vect) {
    }
    vsspinstate = p;      
 
-#if (CFG_DEBOUNCE_SWITCHES) 
-   lbouncer.update();
-   mbouncer.update();
-   rbouncer.update();
-   buttonState |= (lbouncer.read() ? lbuttonBit : 0);
-   buttonState |= (mbouncer.read() ? mbuttonBit : 0);
-   buttonState |= (rbouncer.read() ? rbuttonBit : 0);
-#else
+#if (!CFG_DEBOUNCE_SWITCHES) 
    buttonState &= p;      
 #endif
 
 } /* ISR(PCINT1_vect) */
  
- 
+void hw_setup(void) {
+   pinMode(BrightnessPin,OUTPUT);      
+   analogWrite(BrightnessPin,brightness[brightnessIdx]);      
 
-void setup (void) {
-   unsigned char x = 0;
+   /* pin setup for LCD */
+   pinMode(EnablePin,OUTPUT);       
+   pinMode(DIPin,OUTPUT);       
+   pinMode(DB4Pin,OUTPUT);       
+   pinMode(DB5Pin,OUTPUT);       
+   pinMode(DB6Pin,OUTPUT);       
+   pinMode(DB7Pin,OUTPUT);       
 
-   CLOCK = 0;
-   SCREEN = 0;
-   HOLD_DISPLAY = 0;
-   UPDATE_READY = 0;  /* if we are ready to call the debounce objects */
-#if (1)
-   Serial.begin(19200);
+   //delay(500);    //not sure what this is for?
+   pinMode(ContrastPin,OUTPUT);      
+
+   analogWrite(ContrastPin, parms[contrastIdx]);     
+
+   pinMode(InjectorOpenPin, INPUT);       
+   pinMode(InjectorClosedPin, INPUT);       
+   pinMode(VSSPin, INPUT);            
+   attachInterrupt(0, processInjOpen, FALLING);      
+   attachInterrupt(1, processInjClosed, RISING);      
+
+   /* pin setup for buttons */ 
+   pinMode( lbuttonPin, INPUT );       
+   pinMode( mbuttonPin, INPUT );       
+   pinMode( rbuttonPin, INPUT );      
+
+   //"turn on" the internal pullup resistors      
+   digitalWrite( lbuttonPin, HIGH);       
+   digitalWrite( mbuttonPin, HIGH);       
+   digitalWrite( rbuttonPin, HIGH);       
+
+#if (CFG_DEBOUNCE_SWITCHES)
+   //attach debounce object
+   lbouncer.attach(lbuttonPin);
+   mbouncer.attach(mbuttonPin);
+   rbouncer.attach(rbuttonPin);
+
+   lbouncer.interval(5);
+   mbouncer.interval(5);
+   rbouncer.interval(5);
 #endif
 
-   #if (CFG_IDLE_MESSAGE != 0)
-   IDLE_DISPLAY_DELAY = 0;
-   #endif
+}
 
-   init2();
-   newRun = load();//load the default parameters
-
+void init_screen_names(void) {
+   unsigned char x = 0;
    displayFuncNames[x++]=  PSTR("Custom  "); 
    displayFuncNames[x++]=  PSTR("Instant/Current "); 
    displayFuncNames[x++]=  PSTR("Instant/Tank "); 
@@ -281,64 +306,58 @@ void setup (void) {
    #if (DTE_CFG == 1)
    displayFuncNames[x++]=  PSTR("BIG DTE ");
    #endif
+}
+ 
 
-   pinMode(BrightnessPin,OUTPUT);      
-   analogWrite(BrightnessPin,brightness[brightnessIdx]);      
-   pinMode(EnablePin,OUTPUT);       
-   pinMode(DIPin,OUTPUT);       
-   pinMode(DB4Pin,OUTPUT);       
-   pinMode(DB5Pin,OUTPUT);       
-   pinMode(DB6Pin,OUTPUT);       
-   pinMode(DB7Pin,OUTPUT);       
-   delay2(500);      
+void setup (void) {
+   CLOCK = 0;
+   SCREEN = 0;
+   HOLD_DISPLAY = 0;
 
-   pinMode(ContrastPin,OUTPUT);      
-   analogWrite(ContrastPin,parms[contrastIdx]);  
+#if (CFG_SERIAL_TX)
+   Serial.begin(19200);
+#endif
+
+   newRun = load();      //load the default parameters 
+   init_screen_names();  //load the screen names
+
+   #if (CFG_IDLE_MESSAGE != 0)
+   IDLE_DISPLAY_DELAY = 0;
+   #endif
+
+   hw_setup();
+
+   init2();
+
+   /* display "splash" screen */
    mylcd.begin(16, 2);
    mylcd.clear();
    mylcd.print(getStr(PSTR("OpenGauge       ")));
    mylcd.setCursor(0,LCD_BottomLine);
    mylcd.print(getStr(PSTR("  MPGuino v0.75S")));
 
-   pinMode(InjectorOpenPin, INPUT);       
-   pinMode(InjectorClosedPin, INPUT);       
-   pinMode(VSSPin, INPUT);            
-   attachInterrupt(0, processInjOpen, FALLING);      
-   attachInterrupt(1, processInjClosed, RISING);      
-
-   /* buttons */ 
-   pinMode( lbuttonPin, INPUT );       
-   pinMode( mbuttonPin, INPUT );       
-   pinMode( rbuttonPin, INPUT );      
-
-   //"turn on" the internal pullup resistors      
-   digitalWrite( lbuttonPin, HIGH);       
-   digitalWrite( mbuttonPin, HIGH);       
-   digitalWrite( rbuttonPin, HIGH);       
-   //  digitalWrite( VSSPin, HIGH);       
-
-#if (CFG_DEBOUNCE_SWITCHES)
-   //attach debounce object
-   lbouncer.attach(lbuttonPin);
-   mbouncer.attach(mbuttonPin);
-   rbouncer.attach(rbuttonPin);
-
-   lbouncer.interval(5);
-   mbouncer.interval(5);
-   rbouncer.interval(5);
-
-   UPDATE_READY = 1;  /* now we are ready */
-#endif
-
    //low level interrupt enable stuff      
    PCMSK1 |= (1 << PCINT8);
+#if (!CFG_DEBOUNCE_SWITCHES)
    enableLButton();
    enableMButton();
    enableRButton();
+#endif
    PCICR |= (1 << PCIE1);       
 
-   delay2(1500);       
+   delay2(1500);    /* delay2 will only work after init2 */
 } /* void setup (void) */
+
+#if (CFG_DEBOUNCE_SWITCHES)
+void updateSwitches(void) {
+   lbouncer.update();
+   mbouncer.update();
+   rbouncer.update();
+   //buttonState |= (lbouncer.read() ? lbuttonBit : 0);
+   //buttonState |= (mbouncer.read() ? mbuttonBit : 0);
+   //buttonState |= (rbouncer.read() ? rbuttonBit : 0);  
+}
+#endif
  
 void loop (void) {
    unsigned long lastActivity;
@@ -347,6 +366,9 @@ void loop (void) {
    unsigned long temp;          //scratch variable
 
    lastActivity = microSeconds();
+#if (CFG_DEBOUNCE_SWITCHES)
+   updateSwitches();
+#endif
 
    if (newRun !=1) {
       //go through the initialization screen
@@ -354,9 +376,12 @@ void loop (void) {
    }
 
    while (true) {      
-      #if (CFG_FUELCUT_INDICATOR != 0)
+#if (CFG_FUELCUT_INDICATOR != 0)
       FCUT_POS = 0;
-      #endif
+#endif
+#if (CFG_DEBOUNCE_SWITCHES)
+      updateSwitches();
+#endif
       loopStart = microSeconds();      
       instant.reset();           //clear instant      
       cli();                     /* disable interrupts */
@@ -376,16 +401,16 @@ void loop (void) {
 
       #if (CFG_SERIAL_TX == 1)
       /* send out instantmpg * 1000, instantmph * 1000, the injector/vss raw data */
-      simpletx(format(instantmpg()));
-      simpletx(",");
-      simpletx(format(instantmph()));
-      simpletx(",");
-      simpletx(format(instant.var[Trip::injHius]*1000));
-      simpletx(",");
-      simpletx(format(instant.var[Trip::injPulses]*1000));
-      simpletx(",");
-      simpletx(format(instant.var[Trip::vssPulses]*1000));
-      simpletx("\n");
+      Serial.print(format(instantmpg()));
+      Serial.print(",");
+      Serial.print(format(instantmph()));
+      Serial.print(",");
+      Serial.print(format(instant.var[Trip::injHius]*1000));
+      Serial.print(",");
+      Serial.print(format(instant.var[Trip::injPulses]*1000));
+      Serial.print(",");
+      Serial.print(format(instant.var[Trip::vssPulses]*1000));
+      Serial.print("\n");
       #endif
 
       /* --- update all of the trip objects */
@@ -508,20 +533,15 @@ void loop (void) {
          }
          #endif
 
-         /* --- ensure that we have terminating nulls */
-         LCDBUF1[16] = 0;
-         LCDBUF2[16] = 0;
-
          mylcd.home();
-         mylcd.print(LCDBUF1);
+         mylcd.writechars(LCDBUF1, 16);
          mylcd.setCursor(0, LCD_BottomLine);
-         mylcd.print(LCDBUF2);
+         mylcd.writechars(LCDBUF2, 16);
          mylcd.home();
 
-         Serial.print(CLOCK);
-         Serial.print(" ");
-         Serial.print(buttonState, HEX);
-         Serial.print("\n");
+#if (CFG_DEBOUNCE_SWITCHES)
+         updateSwitches();
+#endif
 
          /* --- see if any buttons were pressed, display a brief message if so --- */
          if (LeftButtonPressed && RightButtonPressed) {
@@ -597,6 +617,9 @@ void loop (void) {
 
       while (elapsedMicroseconds(loopStart) < (looptime)) {
          // wait for the end of the loop to arrive (0.5 sec)
+         #if (CFG_DEBOUNCE_SWITCHES)
+         updateSwitches();
+         #endif
          continue;
       }
 
@@ -711,15 +734,18 @@ void doDisplayInstantTank() {
 }      
 
 void doDisplayBigInstant() {
-   bigNum(instantmpg(),"INST","MPG ");
+   unsigned long temp = instantmpg();
+   bigNum(temp, "INST", "MPG ");
 }      
 
 void doDisplayBigCurrent() {
-   bigNum(current.mpg(),"CURR","MPG ");
+   unsigned long temp = current.mpg();
+   bigNum(temp, "CURR", "MPG ");
 }      
 
 void doDisplayBigTank()    {
-   bigNum(tank.mpg(),"TANK","MPG ");
+   unsigned long temp = tank.mpg();
+   bigNum(temp, "TANK", "MPG ");
 }      
 
 void doDisplayCurrentTripData(void) {
@@ -882,6 +908,7 @@ unsigned long instantmpg(){
 
   if(imph == 0) return 0;
   if(igph == 0) return 999999000;
+
   init64(tmp1,0,1000ul);
   init64(tmp2,0,imph);
   mul64(tmp1,tmp2);
@@ -945,33 +972,35 @@ unsigned long calcDistToEmpty(void) {
 void bigNum (unsigned long t, char * txt1, char * txt2){      
   char decimalpoint = ' ';       // decimal point is a space
   char *r = "009.99";            // default to 999
+
   if (DISPLAY_TYPE != dtBigChars) {
      putCharsToLCD(&mylcd, &chars[0], LcdNewChars);
      DISPLAY_TYPE = dtBigChars;
   }
+
   if(t<=99500){ 
      r=format(t/10);   // 009.86 
-     decimalpoint=5;   // special character 5
+     decimalpoint=4;   // special character 4
   }
   else if(t<=999500){ 
      r=format(t/100);  // 009.86 
   }   
- 
-  strcpy(&LCDBUF1[0], (bignumchars1+(getDigitFromAscii(r[2]))*4));
+
+  memcpy(&LCDBUF1[0], (bignumchars1+(getDigitFromAscii(r[2]))*4), 3);
   LCDBUF1[3] = ' ';
-  strcpy(&LCDBUF1[4], (bignumchars1+(getDigitFromAscii(r[4]))*4));
+  memcpy(&LCDBUF1[4], (bignumchars1+(getDigitFromAscii(r[4]))*4), 3);
   LCDBUF1[7] = ' ';
-  strcpy(&LCDBUF1[8], (bignumchars1+(getDigitFromAscii(r[5]))*4));
+  memcpy(&LCDBUF1[8], (bignumchars1+(getDigitFromAscii(r[5]))*4), 3);
   LCDBUF1[11] = ' ';
-  strcpy(&LCDBUF1[12], txt1);
+  memcpy(&LCDBUF1[12], txt1, 4);
  
-  strcpy(&LCDBUF2[0], (bignumchars2+(getDigitFromAscii(r[2]))*4));
+  memcpy(&LCDBUF2[0], (bignumchars2+(getDigitFromAscii(r[2]))*4), 3);
   LCDBUF2[3] = ' ';
-  strcpy(&LCDBUF2[4], (bignumchars2+(getDigitFromAscii(r[4]))*4));
+  memcpy(&LCDBUF2[4], (bignumchars2+(getDigitFromAscii(r[4]))*4), 3);
   LCDBUF2[7] = decimalpoint;
-  strcpy(&LCDBUF2[8], (bignumchars2+(getDigitFromAscii(r[5]))*4));
+  memcpy(&LCDBUF2[8], (bignumchars2+(getDigitFromAscii(r[5]))*4), 3);
   LCDBUF2[11] = ' ';
-  strcpy(&LCDBUF2[12], txt2);
+  memcpy(&LCDBUF2[12], txt2, 4);
 
   #if (CFG_FUELCUT_INDICATOR != 0)
   FCUT_POS = 3;
@@ -1076,7 +1105,6 @@ unsigned long rformat(char * val){
    return v;
 } 
 
-
 void editParm(unsigned char parmIdx) {
    unsigned long v = parms[parmIdx];
    unsigned char position=Pos_OnesDigit;  //right end of 10 digit number
@@ -1091,13 +1119,10 @@ void editParm(unsigned char parmIdx) {
    strcpy(&LCDBUF2[Pos_OK], " OK XX");
 
    /* -- write to display -- */
-   LCDBUF1[16] = 0; 
-   LCDBUF2[16] = 0;
-
    mylcd.clear();
-   mylcd.print(LCDBUF1);
+   mylcd.writechars(LCDBUF1, 16);
    mylcd.setCursor(0, LCD_BottomLine);
-   mylcd.print(LCDBUF2);
+   mylcd.writechars(LCDBUF2, 16);
    mylcd.cursor();  /* cursor on */
 
 #if (CFG_NICE_CURSOR)
@@ -1113,6 +1138,10 @@ void editParm(unsigned char parmIdx) {
 #endif
 
    while (true) {
+#if (CFG_DEBOUNCE_SWITCHES)
+      updateSwitches();
+#endif
+
       if (position<Pos_OK) mylcd.setCursor(position,LCD_BottomLine);   
       if (position==Pos_OK) mylcd.setCursor(Pos_Cancel,LCD_BottomLine);   
       if (position==Pos_Cancel) mylcd.setCursor(14,LCD_BottomLine);   
@@ -1205,6 +1234,9 @@ void initGuino() {
    screen.add(&lblPulsesrev, 0, 4);
 
    while(1) {
+#if (CFG_DEBOUNCE_SWITCHES)
+      updateSwitches();
+#endif
       screen.update();
    }
 
@@ -1252,37 +1284,23 @@ void init2() {
 	// work there
 	sei();  /* enable interrupts */
 	
-	// timer 0 is used for millis2() and delay2()
+	// timer 0 is used for millis2() and delay2() -- it is also used for millis()
 	timer2_overflow_count = 0;
 
 	// on the ATmega168, timer 0 is also used for fast hardware pwm
 	// (using phase-correct PWM would mean that timer 0 overflowed half as often
 	// resulting in different millis2() behavior on the ATmega8 and ATmega168)
-   TCCR2A=1 << WGM20|1 << WGM21;
+   // TCCR is the "Timer/Counter Control Register"
+   // Setting WGM20 and WGM21 is enabling "Mode 3", the Fast PWM mode
+   TCCR2A = ((1 << WGM20) | (1 << WGM21));  /* WGM20 and WGM21 bits control counting sequence */
 
 	// set timer 2 prescale factor to 64
-   TCCR2B = 1<<CS22;
+   TCCR2B = (1 << CS22);   
 
 	// enable timer 2 overflow interrupt
-	TIMSK2 |= 1<<TOIE2;
+	TIMSK2 |= (1 << TOIE2);
 
-	// disable timer 0 overflow interrupt
+	// disable timer 0 overflow interrupt 
+   // --> this means the standard millis() function won't work anymore (!)
 	TIMSK0 &= !(1<<TOIE0);
 }
-
-
-#if (CFG_SERIAL_TX == 1)
-void simpletx( char * string ){
-   if (UCSR0B != (1<<TXEN0)) { //do we need to init the uart?
-      UBRR0H = (unsigned char)(myubbr>>8);
-      UBRR0L = (unsigned char)(myubbr);
-      UCSR0B = (1<<TXEN0);               //Enable transmitter
-      UCSR0C = (3<<UCSZ00);              //N81
-   }
-   while (*string)
-   {
-      while ( !( UCSR0A & (1<<UDRE0)) );
-      UDR0 = *string++; //send the data
-   }
-}
-#endif
