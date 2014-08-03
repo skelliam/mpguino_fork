@@ -1,12 +1,16 @@
+
 #include <WString.h>
 #include <EEPROM.h>
-#include "mpguino.h"
 #include <LiquidCrystal.h>
+
+#include "mpguino.h"
 #include "utils.h"
 #include "trip.h"
 #include "mathfuncs.h"
 #include "parms.h"
 #include "lcdchars.h"
+
+#include <ScreenUi.h>  //may need to rename ScreenUi.cpp --> .ino before import
 
 
 //define the event IDs
@@ -16,7 +20,6 @@
 #define enableRButtonID 3
 
 /* --- Global Variable Declarations -------------------------- */
-//LiquidCrystal mylcd(RS, enable, data 1, 2, 3, 4);
 LiquidCrystal mylcd(DIPin, EnablePin, DB4Pin, DB5Pin, DB6Pin, DB7Pin);
 
 unsigned long MAXLOOPLENGTH = 0;            // see if we are overutilizing the CPU      
