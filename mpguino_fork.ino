@@ -11,6 +11,7 @@
 #include "lcdchars.h"
 
 #include <ScreenUi.h>  //may need to rename ScreenUi.cpp --> .ino before import
+#include <Bounce2.h>
 
 
 //define the event IDs
@@ -21,6 +22,13 @@
 
 /* --- Global Variable Declarations -------------------------- */
 LiquidCrystal mylcd(DIPin, EnablePin, DB4Pin, DB5Pin, DB6Pin, DB7Pin);
+#if (CFG_DEBOUNCE_SWITCHES)
+Bounce lbouncer = Bounce();  /* debounce library */
+Bounce mbouncer = Bounce();
+Bounce rbouncer = Bounce();
+unsigned char UPDATE_READY = 0;
+unsigned char BUTTONS = 0;
+#endif
 
 unsigned long MAXLOOPLENGTH = 0;            // see if we are overutilizing the CPU      
 
@@ -223,7 +231,18 @@ ISR(PCINT1_vect) {
       lastVssFlop = vssFlop;
    }
    vsspinstate = p;      
+
+#if (CFG_DEBOUNCE_SWITCHES) 
+   lbouncer.update();
+   mbouncer.update();
+   rbouncer.update();
+   buttonState |= (lbouncer.read() ? lbuttonBit : 0);
+   buttonState |= (mbouncer.read() ? mbuttonBit : 0);
+   buttonState |= (rbouncer.read() ? rbuttonBit : 0);
+#else
    buttonState &= p;      
+#endif
+
 } /* ISR(PCINT1_vect) */
  
  
@@ -234,8 +253,9 @@ void setup (void) {
    CLOCK = 0;
    SCREEN = 0;
    HOLD_DISPLAY = 0;
-#if (CFG_SERIAL_TX)
-   Serial.begin(9600);
+   UPDATE_READY = 0;  /* if we are ready to call the debounce objects */
+#if (1)
+   Serial.begin(19200);
 #endif
 
    #if (CFG_IDLE_MESSAGE != 0)
@@ -286,6 +306,7 @@ void setup (void) {
    attachInterrupt(0, processInjOpen, FALLING);      
    attachInterrupt(1, processInjClosed, RISING);      
 
+   /* buttons */ 
    pinMode( lbuttonPin, INPUT );       
    pinMode( mbuttonPin, INPUT );       
    pinMode( rbuttonPin, INPUT );      
@@ -295,6 +316,19 @@ void setup (void) {
    digitalWrite( mbuttonPin, HIGH);       
    digitalWrite( rbuttonPin, HIGH);       
    //  digitalWrite( VSSPin, HIGH);       
+
+#if (CFG_DEBOUNCE_SWITCHES)
+   //attach debounce object
+   lbouncer.attach(lbuttonPin);
+   mbouncer.attach(mbuttonPin);
+   rbouncer.attach(rbuttonPin);
+
+   lbouncer.interval(5);
+   mbouncer.interval(5);
+   rbouncer.interval(5);
+
+   UPDATE_READY = 1;  /* now we are ready */
+#endif
 
    //low level interrupt enable stuff      
    PCMSK1 |= (1 << PCINT8);
@@ -325,7 +359,7 @@ void loop (void) {
       #endif
       loopStart = microSeconds();      
       instant.reset();           //clear instant      
-      cli();
+      cli();                     /* disable interrupts */
       instant.update(tmpTrip);   //"copy" of tmpTrip in instant now      
       tmpTrip.reset();           //reset tmpTrip first so we don't lose too many interrupts      
       instInjStart=tmpInstInjStart; 
@@ -338,7 +372,7 @@ void loop (void) {
       tmpInstInjTot=0;     
       tmpInstInjCount=0;
 
-      sei();
+      sei();  /* enable interrupts */
 
       #if (CFG_SERIAL_TX == 1)
       /* send out instantmpg * 1000, instantmph * 1000, the injector/vss raw data */
@@ -484,6 +518,11 @@ void loop (void) {
          mylcd.print(LCDBUF2);
          mylcd.home();
 
+         Serial.print(CLOCK);
+         Serial.print(" ");
+         Serial.print(buttonState, HEX);
+         Serial.print("\n");
+
          /* --- see if any buttons were pressed, display a brief message if so --- */
          if (LeftButtonPressed && RightButtonPressed) {
             // left and right = initialize      
@@ -541,7 +580,7 @@ void loop (void) {
          }
          #endif
 
-         if (buttonState!=buttonsUp) {
+         if (!AllButtonsUp()) {
             HOLD_DISPLAY = 1;
          }
 
@@ -551,7 +590,7 @@ void loop (void) {
       } 
 
       // reset the buttons      
-      buttonState = buttonsUp;
+      SetButtonsUp();
        
       // keep track of how long the loops take before we go into waiting.      
       MAXLOOPLENGTH = MAX(MAXLOOPLENGTH, elapsedMicroseconds(loopStart));
@@ -562,6 +601,8 @@ void loop (void) {
       }
 
       CLOCK++;
+
+
 
    } /* while (true) */
 } /* loop (void) */
@@ -1128,24 +1169,52 @@ void editParm(unsigned char parmIdx) {
             if (parmIdx==contrastIdx) analogWrite(ContrastPin,rformat(fmtv));  
          }  /* middle button */
 
-         if (buttonState!=buttonsUp)
-         keyLock=1;
+         if (!AllButtonsUp()) { 
+            keyLock=1; 
+         }
+
       } /* if keyLock == 0 */
       else {
          keyLock=0;
       }
 
-      buttonState=buttonsUp;
+      SetButtonsUp();
       delay2(125);
    }      
 
 }  /* editParm() */
 
 void initGuino() { 
+
+   Screen screen(16, 2);  /* need to change for different LCD */
+   Label  lblContrast("Contrast:");
+   Label    lblVsscal("Puls/mi:");
+   Label   lblFuelcal("us/gal:");
+   Label lblPulsesrev("puls/2revs:");
+   Label   lblTimeout("Timeout:");
+   Label  lblTanksize("Tank gals:");
+   Label  lblInjdelay("inj delay:");
+   Label    lblWeight("weight:");
+   Label   lblScratch("scratchpad:");
+   Label  lblVssdelay("vss delay:");
+   Label  lblFuelcost("fuel cost:");
+
+   screen.add(&lblContrast, 0, 1);
+   screen.add(&lblVsscal, 0, 2);
+   screen.add(&lblFuelcal, 0, 3);
+   screen.add(&lblPulsesrev, 0, 4);
+
+   while(1) {
+      screen.update();
+   }
+
+   #if (0)
    //edit all the parameters
    for (int x=0; x<parmsCount; x++) {
       editParm(x);
    }
+   #endif
+
    save();
    HOLD_DISPLAY=1;
 }  
@@ -1168,7 +1237,7 @@ void delayMicroseconds2(unsigned int us){
 	us <<= 2;
 	us -= 2;
 	oldSREG = SREG;
-	cli();
+	cli();  /* disable interrupts */
 	// busy wait
 	__asm__ __volatile__ (
 		"1: sbiw %0,1" "\n\t" // 2 cycles
@@ -1181,7 +1250,7 @@ void delayMicroseconds2(unsigned int us){
 void init2() {
 	// this needs to be called before setup() or some functions won't
 	// work there
-	sei();
+	sei();  /* enable interrupts */
 	
 	// timer 0 is used for millis2() and delay2()
 	timer2_overflow_count = 0;

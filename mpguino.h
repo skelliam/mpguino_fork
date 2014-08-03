@@ -46,21 +46,18 @@
 //#define NC                                  11
 #define DB6Pin                                12       
 #define DB7Pin                                13      
-#define VSSPin                                14 //analog 0      
-//#define NC                                  15
-//#define NC                                  16
-#define lbuttonPin                            17  // Left Button, on analog 3
-#define mbuttonPin                            18  // Middle Button, on analog 4
-#define rbuttonPin                            19  // Right Button, on analog 5
+#define VSSPin                                14  //A0 (analog 0)
+//#define NC                                  15  //A1
+//#define NC                                  16  //A2
+#define lbuttonPin                            17  //A3  Left Button, on analog 3
+#define mbuttonPin                            18  //A4  Middle Button, on analog 4
+#define rbuttonPin                            19  //A5  Right Button, on analog 5
 
 /* --- Button bitmasks --- */ 
 #define vssBit                              ((unsigned char)0x01)  //  pin14 is a bitmask 1 on port C
-#define lbuttonBit                          ((unsigned char)0x08)  //  pin17 is a bitmask 8 on port C
-#define mbuttonBit                          ((unsigned char)0x10)  //  pin18 is a bitmask 16 on port C
-#define rbuttonBit                          ((unsigned char)0x20)  //  pin19 is a bitmask 32 on port C
 
 // start with the buttons in the right state      
-#define buttonsUp   (lbuttonBit | mbuttonBit | rbuttonBit)
+
 
 /* --- LCD line buffer size --- */
 #define bufsize                               17
@@ -75,9 +72,24 @@ typedef void (* pFunc)(void);//type for display function pointers
 
 /* --- Macros ------------------------------------------------ */
 
+#define lbuttonBit                          ((unsigned char)0x08)  //  pin17 is a bitmask 8 on port C
+#define mbuttonBit                          ((unsigned char)0x10)  //  pin18 is a bitmask 16 on port C
+#define rbuttonBit                          ((unsigned char)0x20)  //  pin19 is a bitmask 32 on port C
+#define buttonsUp                (lbuttonBit | mbuttonBit | rbuttonBit)
+#define SetButtonsUp()           (buttonState = buttonsUp)
+#define AllButtonsUp()           (buttonState == buttonsUp)
 #define LeftButtonPressed        (!(buttonState & lbuttonBit))
 #define RightButtonPressed       (!(buttonState & rbuttonBit))
 #define MiddleButtonPressed      (!(buttonState & mbuttonBit))
+
+
+#if (0)
+#define SetButtonsUp()           {;}
+#define LeftButtonPressed        (lbouncer.read())
+#define RightButtonPressed       (rbouncer.read())
+#define MiddleButtonPressed      (mbouncer.read())
+#define AllButtonsUp()           (!LeftButtonPressed && !RightButtonPressed && !MiddleButtonPressed)
+#endif
 
 #if (CFG_IDLE_MESSAGE == 1)
 #define IdleDisplayRequested     (IDLE_DISPLAY_DELAY > 0)
