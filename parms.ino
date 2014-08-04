@@ -13,6 +13,7 @@ unsigned long parms[]={
    300ul,              /* fuel cost                0.01 dollars/bit */
 };
 
+#if (0)
 char *parmLabels[]={
    "Contrast",
    "VSS Pulses/Mile", 
@@ -26,4 +27,19 @@ char *parmLabels[]={
    "VSS Delay ms",
    "Fuel Cost($/gal)"
 };
+#else
+char *parmLabels[]={
+   "Cntrast:",
+   "Pls/mi:", 
+   "us/gal:",
+   "Pls/2revs:",
+   "Timeout (min):",
+   "Tank_gal:",
+   "Inj_dlay:",
+   "Weight:",
+   "Memo:",
+   "Vss_dlay:",
+   "Fuelcost:"
+};
+#endif
 

@@ -637,77 +637,8 @@ void loop (void) {
 } /* loop (void) */
 
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * format:
- * Take an unsigned long and convert it to a string value that we can display.
- * The function will always divide the input by 1000 and display the result.
- * Some examples with output:
- * 
- * format(1000)    --> "001.00"
- * format(123456)  --> "123.46"  (note rounding of last digit)
- * format(1000000) --> "1000.0"
- * format(100000)  --> "100.00"
- *
- * Question:  Why doesn't this function require the special 
- *            unsigned long math?
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
- 
-char *format(unsigned long num) {
-   static char fBuff[7];  //used by format
-   unsigned char decimalpointpos = 3;
-   unsigned char x = 6;
 
-   while (num > 999994) {
-      num /= 10;
-      decimalpointpos++;
-      if( decimalpointpos == 5 ) break; /* We'll lose the top numbers like an odometer */
-   }
-   if (decimalpointpos == 5) {
-      decimalpointpos = 99;
-   }                       /* We don't need a decimal point here. */
 
-   /* Round off the non-printed value. */
-   if((num % 10) > 4) {
-      num += 10;
-   }
-
-   num /= 10;
-
-   while (x > 0) {
-      x--;
-      if (x == decimalpointpos) {
-         /* time to poke in the decimal point? */
-         fBuff[x]='.';
-      }
-      else {
-         if ( ((x+1) == decimalpointpos) && (num == 0) ) {
-            /* decimal point just inserted and nothing left, put in a zero */
-            fBuff[x]='0';
-         }
-         else if ( (x < decimalpointpos) && (num == 0) ) {
-            /* we have more to go and decimal point already done, put in spaces */
-            fBuff[x]=' ';
-         }
-         else {
-            /* poke the ascii character for the digit. */
-            fBuff[x]= getAsciiFromDigit((num % 10));
-         }
-         num /= 10;
-      }
-   }
-
-   fBuff[6] = 0;  //terminating null
-   return fBuff;
-}
- 
-//get a string from flash 
-char *getStr(const char * str) { 
-   static char mBuff[17]; //used by getStr 
-   strcpy_P(mBuff, str); 
-   return mBuff; 
-} 
-
- 
 void doDisplayCustom() { 
    displayTripCombo('I','m',instantmpg(),'s',instantmph(),'G','H',instantgph(),'m',current.mpg());
 }      
@@ -879,16 +810,7 @@ void tDisplay( void * r){ //display trip functions.
 }      
     
  
-// this function will return the number of bytes currently free in RAM      
-int memoryTest(){ 
-  int free_memory; 
-  if((int)__brkval == 0) 
-    free_memory = ((int)&free_memory) - ((int)&__bss_end); 
-  else 
-    free_memory = ((int)&free_memory) - ((int)__brkval); 
-  return free_memory; 
-} 
- 
+
 
 unsigned long instantmph(){      
   unsigned long tmp1[2];
@@ -940,24 +862,6 @@ unsigned long instantgph(){
   return tmp1[1];      
 }
 
-/*
-unsigned long instantrpm(){      
-  unsigned long tmp1[2];
-  unsigned long tmp2[2];
-
-  init64(tmp1,0,instInjCount);
-  init64(tmp2,0,120000000ul);
-  mul64(tmp1,tmp2);
-  init64(tmp2,0,1000ul);
-  mul64(tmp1,tmp2);
-  init64(tmp2,0,parms[var[Trip::injPulses]Per2Revolutions]);
-  div64(tmp1,tmp2);
-  init64(tmp2,0,instInjEnd-instInjStart);
-  div64(tmp1,tmp2);
-  return tmp1[1];      
-} */
-
-
 #if (DTE_CFG)
 unsigned long calcDistToEmpty(void) {
    unsigned long dte;
@@ -973,8 +877,6 @@ unsigned long calcDistToEmpty(void) {
 }
 #endif
 
-
- 
 void bigNum (unsigned long t, char * txt1, char * txt2){      
   char decimalpoint = ' ';       // decimal point is a space
   char *r = "009.99";            // default to 999
@@ -1014,23 +916,7 @@ void bigNum (unsigned long t, char * txt1, char * txt2){
   
 }      
 
-int insert(int *array, int val, size_t size, size_t at)
-{
-   size_t i;
 
-   /* In range? */
-   if (at >= size) return -1;
-
-   /* Shift elements to make a hole */
-   for (i = size - 1; i > at; i--) {
-      array[i] = array[i - 1];
-   }
-
-   /* Insertion! */
-   array[at] = val;
-
-   return 0;
-}
   
 void save(){
    EEPROM.write(0,guinosig);
@@ -1038,34 +924,7 @@ void save(){
    writeEepBlock32(0x04, &parms[0], parmsCount);
 }
 
-void writeEepBlock32(unsigned int start_addr, unsigned long *val, unsigned int size) {
-   unsigned char p = 0;
-   unsigned char shift = 0;
-   int i = 0;
-   for (start_addr; p < size; start_addr+=4) {
-      for (i=0; i<4; i++) {
-         shift = (8 * (3-i));  /* 24, 16, 8, 0 */
-         EEPROM.write(start_addr + i, (val[p]>>shift) & 0xFF);
-      }
-      p++;
-   }
-}
 
-void readEepBlock32(unsigned int start_addr, unsigned long *val, unsigned int size) {
-   unsigned long v = 0;
-   unsigned char p = 0;
-   unsigned char temp = 0;
-   unsigned char i = 0;
-   for(start_addr; p < size; start_addr+=4) {
-      v = 0;   /* clear the scratch variable every loop! */
-      for (i=0; i<4; i++) {
-         temp = (i > 0) ? 1 : 0;  /* 0, 1, 1, 1  */
-         v = (v << (temp * 8)) + EEPROM.read(start_addr + i);
-      }
-      val[p] = v;
-      p++;
-   }
-}
 
 unsigned char load(){ //return 1 if loaded ok
    #ifdef usedefaults
@@ -1086,30 +945,6 @@ unsigned char load(){ //return 1 if loaded ok
    return 0;
 }
 
-char * uformat(unsigned long val){ 
-   static char mBuff[17];
-   unsigned long d = 1000000000ul;
-   unsigned char p;
-   for(p = 0; p < 10 ; p++){
-      mBuff[p]=getAsciiFromDigit((val/d));
-      val=val-(val/d*d);
-      d/=10;
-   }
-   mBuff[10]=0;
-   return mBuff;
-} 
-
-unsigned long rformat(char * val){ 
-   unsigned long d = 1000000000ul;
-   unsigned long v = 0ul;
-
-   for (unsigned char p = 0; p < 10 ; p++) {
-      v = v+(d*(getDigitFromAscii(val[p])));
-      d /= 10;
-   }
-
-   return v;
-} 
 
 void editParm(unsigned char parmIdx) {
    unsigned long v = parms[parmIdx];
@@ -1225,38 +1060,49 @@ void initGuino() {
 
    Screen screen(16, 2);  /* need to change for different LCD */
                  //    123456789ABCDEF
-   Label  lblContrast("Cntrast:");    //8
-   Label    lblVsscal("Pls/mi:");     //7
-   Label   lblFuelcal("us/gal:");     //7
-   Label lblPulsesrev("pls/2revs:");  //A
-   Label   lblTimeout("Timeout:");    //8
-   Label  lblTanksize("Tank_gal:");   //9
-   Label  lblInjdelay("inj_dlay:");   //9
-   Label    lblWeight("Weight:");     //7
-   Label   lblScratch("Memo:");       //5
-   Label  lblVssdelay("Vss_dlay:");   //9
-   Label  lblFuelcost("Fuelcost:");   //9
+   Label  lblContrast(parmLabels[contrastIdx]);    //8
+   Label    lblVsscal(parmLabels[vssPulsesPerMileIdx]);     //7
+   Label   lblFuelcal(parmLabels[microSecondsPerGallonIdx]);     //7
+   Label lblPulsesrev(parmLabels[injPulsesPer2Revolutions]);  //A
+   Label   lblTimeout(parmLabels[currentTripResetTimeoutUSIdx]);    //8
+   Label  lblTanksize(parmLabels[tankSizeIdx]);   //9
+   Label  lblInjdelay(parmLabels[injectorSettleTimeIdx]);   //9
+   Label    lblWeight(parmLabels[weightIdx]);     //7
+   Label   lblScratch(parmLabels[scratchpadIdx]);       //5
+   Label  lblVssdelay(parmLabels[vsspauseIdx]);   //9
+   Label  lblFuelcost(parmLabels[fuelcostIdx]);   //9
 
-   Input inpContrast(test);
-   Input inpVsscal(test);
-   Input inpFuelcal(test);
-   Input inpPulsesrev(test);
-   Input inpTimeout(test);
-   Input inpTanksize(test);
-   Input inpInjdelay(test);
-   Input inpWeight(test);
-   Input inpScratch(test);
-   Input inpVssdelay(test);
-   Input inpFuelcost(test);
+#if (1)
+   List  lstContrast(6);
+   lstContrast.addItem("");
+   lstContrast.addItem("x");
+   lstContrast.addItem("xx");
+   lstContrast.addItem("xxx");
+   lstContrast.addItem("xxxx");
+   lstContrast.addItem("xxxxx");
+#endif
+
+   /* default values for input fields */
+   Input inpVsscal(uformat(parms[vssPulsesPerMileIdx]));
+   Input inpFuelcal(uformat(parms[microSecondsPerGallonIdx]));
+   Input inpPulsesrev(uformat(parms[injPulsesPer2Revolutions]));
+   Input inpTimeout(uformat(parms[currentTripResetTimeoutUSIdx]));
+   Input inpTanksize(uformat(parms[tankSizeIdx]));
+   Input inpInjdelay(uformat(parms[injectorSettleTimeIdx]));
+   Input inpWeight(uformat(parms[weightIdx]));
+   Input inpScratch(uformat(parms[scratchpadIdx]));
+   Input inpVssdelay(uformat(parms[vsspauseIdx]));
+   Input inpFuelcost(uformat(parms[fuelcostIdx]));
 
    Button cancelButton("Cancel");
    Button okButton("Ok");
+
    // This line creates the ScrollContainer, passing the screen it will be attached
    // to and the width and height for the new ScrollContainer.
    ScrollContainer sc(&screen, screen.width(), 2);
    
    sc.add(&lblContrast, 0, x);
-   sc.add(&inpContrast, 9, x++);
+   sc.add(&lstContrast, 9, x++);
 
    sc.add(&lblVsscal, 0, x);
    sc.add(&inpVsscal, 8, x++);
@@ -1264,16 +1110,29 @@ void initGuino() {
    sc.add(&lblFuelcal, 0, x);
    sc.add(&inpFuelcal, 8, x++);
 
-
-   sc.add(&lblPulsesrev, 0, x++);
+   sc.add(&lblPulsesrev, 0, x);
+   sc.add(&inpPulsesrev, 11, x++);
 
    sc.add(&lblTimeout, 0, x++);
-   sc.add(&lblTanksize, 0, x++);
-   sc.add(&lblInjdelay, 0, x++);
-   sc.add(&lblWeight, 0, x++);
-   sc.add(&lblScratch, 0, x++);
-   sc.add(&lblVssdelay, 0, x++);
-   sc.add(&lblFuelcost, 0, x++);
+   sc.add(&inpTimeout, 0, x++);
+
+   sc.add(&lblTanksize, 0, x);
+   sc.add(&inpTanksize, 10, x++);
+
+   sc.add(&lblInjdelay, 0, x); 
+   sc.add(&inpInjdelay, 10, x++);
+
+   sc.add(&lblWeight, 0, x); 
+   sc.add(&inpWeight, 8, x++);
+
+   sc.add(&lblScratch, 0, x); 
+   sc.add(&inpScratch, 6, x++);
+
+   sc.add(&lblVssdelay, 0, x); 
+   sc.add(&inpVssdelay, 10, x++);
+
+   sc.add(&lblFuelcost, 0, x); 
+   sc.add(&inpFuelcost, 10, x++);
 
    //ok and cancel buttons at the end
    sc.add(&okButton, 0, x); 
@@ -1282,7 +1141,7 @@ void initGuino() {
    screen.add(&sc, 0, 0);
 
 #if (CFG_DEBOUNCE_SWITCHES)
-   updateDebounceInterval(10);
+   updateDebounceInterval(5);
 #endif
 
    while(1) {
